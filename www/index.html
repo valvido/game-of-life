@@ -1,26 +1,107 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
+    <meta charset="utf-8">
+    <title>Game of Life</title>
     <style>
       body {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        height: 100%;
+        padding: 10px;
+      }
+
+      input {
+        margin: 5px;
+        width: 200px;
+      }
+
+      #game-of-life-canvas {
+        font-family: monospace;
+        white-space: pre;
+        margin-top: 20px;
+        width: 100%;
+        max-height: 60vh; /* Limit the height of the grid */
+        overflow-y: scroll; /* Make it scrollable vertically */
+        max-width: 90vw; /* Limit the width of the grid */
+        font-size: 12px; /* Optional: Adjust the font size to make the grid fit better */
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        margin-top: 10px;
       }
     </style>
-    <meta charset="utf-8">
-    <title>Hello wasm-pack!</title>
   </head>
   <body>
+    <h1>Game of Life</h1>
+
+    <div>
+      <label for="width">Grid Width:</label>
+      <input type="number" id="width" value="64" min="1">
+    </div>
+    <div>
+      <label for="height">Grid Height:</label>
+      <input type="number" id="height" value="64" min="1">
+    </div>
+    <div>
+      <label for="aliveCount">Alive Cells:</label>
+      <input type="number" id="aliveCount" value="500" min="1">
+    </div>
+    <div>
+      <label for="iterations">Iterations:</label>
+      <input type="number" id="iterations" value="10" min="1">
+    </div>
+
+    <button id="startButton">Start Simulation</button>
+
     <pre id="game-of-life-canvas"></pre>
+
     <script src="./bootstrap.js"></script>
     <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
-    <script src="./bootstrap.js"></script>
+    <script>
+      // Ensure the canvas grid resizes based on the window size
+      window.addEventListener('resize', resizeGrid);
+
+      function resizeGrid() {
+        const canvas = document.getElementById('game-of-life-canvas');
+        const width = window.innerWidth * 0.9; // 90% of the window width
+        const height = window.innerHeight * 0.6; // 60% of the window height
+        
+        // Dynamically set the grid size
+        canvas.style.maxWidth = `${width}px`;
+        canvas.style.maxHeight = `${height}px`;
+      }
+
+      // Initial resize call
+      resizeGrid();
+
+      document.getElementById("startButton").addEventListener("click", () => {
+        const width = parseInt(document.getElementById("width").value);
+        const height = parseInt(document.getElementById("height").value);
+        const aliveCount = parseInt(document.getElementById("aliveCount").value);
+        const iterations = parseInt(document.getElementById("iterations").value);
+
+        // Make sure wasm functions are available
+        if (typeof Universe === 'undefined') {
+          console.error("WASM functions not loaded yet");
+          return;
+        }
+
+        // Initialize the universe with the user inputs
+        const universe = Universe.new(width, height, aliveCount);
+
+        // Run the simulation for the specified number of iterations
+        universe.run_iterations(iterations);
+
+        // Display the universe grid as a string in the <pre> element
+        document.getElementById("game-of-life-canvas").textContent = universe.render();
+      });
+    </script>
   </body>
 </html>

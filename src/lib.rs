@@ -1,4 +1,3 @@
-
 extern crate cfg_if;
 extern crate wasm_bindgen;
 
@@ -6,6 +5,7 @@ mod utils;
 
 use cfg_if::cfg_if;
 use wasm_bindgen::prelude::*;
+use rand::Rng; // For random number generation
 
 cfg_if! {
     // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -15,6 +15,11 @@ cfg_if! {
         #[global_allocator]
         static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
     }
+}
+
+#[wasm_bindgen(start)]
+pub fn main() {
+    console_error_panic_hook::set_once();
 }
 
 #[wasm_bindgen]
@@ -32,13 +37,11 @@ pub struct Universe {
     cells: Vec<Cell>,
 }
 
-
 impl Universe {
     fn get_index(&self, row: u32, column: u32) -> usize {
         (row * self.width + column) as usize
     }
 
-    
     fn live_neighbor_count(&self, row: u32, column: u32) -> u8 {
         let mut count = 0;
         for delta_row in [self.height - 1, 0, 1].iter().cloned() {
@@ -55,6 +58,20 @@ impl Universe {
         }
         count
     }
+
+    fn randomize_alive_cells(&mut self, alive_count: u32) {
+        let mut rng = rand::thread_rng();
+        let mut count = 0;
+
+        // Randomly set the `alive_count` cells to Alive state
+        while count < alive_count {
+            let index = rng.gen_range(0..(self.width * self.height)) as usize;
+            if self.cells[index] == Cell::Dead {
+                self.cells[index] = Cell::Alive;
+                count += 1;
+            }
+        }
+    }
 }
 
 #[wasm_bindgen]
@@ -69,19 +86,10 @@ impl Universe {
                 let live_neighbors = self.live_neighbor_count(row, col);
 
                 let next_cell = match (cell, live_neighbors) {
-                    // Rule 1: Any live cell with fewer than two live neighbours
-                    // dies, as if caused by underpopulation.
                     (Cell::Alive, x) if x < 2 => Cell::Dead,
-                    // Rule 2: Any live cell with two or three live neighbours
-                    // lives on to the next generation.
                     (Cell::Alive, 2) | (Cell::Alive, 3) => Cell::Alive,
-                    // Rule 3: Any live cell with more than three live
-                    // neighbours dies, as if by overpopulation.
                     (Cell::Alive, x) if x > 3 => Cell::Dead,
-                    // Rule 4: Any dead cell with exactly three live neighbours
-                    // becomes a live cell, as if by reproduction.
                     (Cell::Dead, 3) => Cell::Alive,
-                    // All other cells remain in the same state.
                     (otherwise, _) => otherwise,
                 };
 
@@ -92,24 +100,18 @@ impl Universe {
         self.cells = next;
     }
 
-    pub fn new() -> Universe {
-        let width = 64;
-        let height = 64;
+    pub fn new(width: u32, height: u32, alive_count: u32) -> Universe {
+        let cells = vec![Cell::Dead; (width * height) as usize];
+        let mut universe = Universe { width, height, cells };
 
-        let cells = (0..width * height)
-            .map(|i| {
-                if i % 2 == 0 || i % 7 == 0 {
-                    Cell::Alive
-                } else {
-                    Cell::Dead
-                }
-            })
-            .collect();
+        universe.randomize_alive_cells(alive_count);
 
-        Universe {
-            width,
-            height,
-            cells,
+        universe
+    }
+
+    pub fn run_iterations(&mut self, iterations: u32) {
+        for _ in 0..iterations {
+            self.tick();
         }
     }
 
@@ -118,14 +120,13 @@ impl Universe {
     }
 }
 
-
 use std::fmt;
 
 impl fmt::Display for Universe {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for line in self.cells.as_slice().chunks(self.width as usize) {
             for &cell in line {
-                let symbol = if cell == Cell::Dead { '◻' } else { '◼' };
+                let symbol = if cell == Cell::Dead { "☁ " } else { "🦄" };
                 write!(f, "{}", symbol)?;
             }
             write!(f, "\n")?;
