@@ -8,12 +8,10 @@ use wasm_bindgen::prelude::*;
 use rand::Rng; // For random number generation
 
 cfg_if! {
-    // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
-    // allocator.
     if #[cfg(feature = "wee_alloc")] {
         extern crate wee_alloc;
         #[global_allocator]
-        static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+        static ALLOC: wee_alloc::WeeAlloc = wee_alloc::INIT;
     }
 }
 
@@ -23,27 +21,23 @@ pub fn main() {
 }
 
 #[wasm_bindgen]
-#[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Cell {
-    Dead = 0,
-    Alive = 1,
-}
-
-#[wasm_bindgen]
 pub struct Universe {
     width: u32,
     height: u32,
-    cells: Vec<Cell>,
+    cells: Vec<u64>, // Each u64 represents 64 cells
 }
 
 impl Universe {
-    fn get_index(&self, row: u32, column: u32) -> usize {
-        (row * self.width + column) as usize
+    fn get_index(&self, row: u32, column: u32) -> (usize, u64) {
+        let bit_index = row * self.width + column;
+        let word_index = (bit_index / 64) as usize; // Index in the vector
+        let bit_position = bit_index % 64;         // Position in the u64
+        (word_index, 1 << bit_position)
     }
 
     fn live_neighbor_count(&self, row: u32, column: u32) -> u8 {
         let mut count = 0;
+
         for delta_row in [self.height - 1, 0, 1].iter().cloned() {
             for delta_col in [self.width - 1, 0, 1].iter().cloned() {
                 if delta_row == 0 && delta_col == 0 {
@@ -52,10 +46,14 @@ impl Universe {
 
                 let neighbor_row = (row + delta_row) % self.height;
                 let neighbor_col = (column + delta_col) % self.width;
-                let idx = self.get_index(neighbor_row, neighbor_col);
-                count += self.cells[idx] as u8;
+                let (word_index, bit_mask) = self.get_index(neighbor_row, neighbor_col);
+
+                if self.cells[word_index] & bit_mask != 0 {
+                    count += 1;
+                }
             }
         }
+
         count
     }
 
@@ -63,11 +61,13 @@ impl Universe {
         let mut rng = rand::thread_rng();
         let mut count = 0;
 
-        // Randomly set the `alive_count` cells to Alive state
         while count < alive_count {
-            let index = rng.gen_range(0..(self.width * self.height)) as usize;
-            if self.cells[index] == Cell::Dead {
-                self.cells[index] = Cell::Alive;
+            let row = rng.gen_range(0..self.height);
+            let col = rng.gen_range(0..self.width);
+            let (word_index, bit_mask) = self.get_index(row, col);
+
+            if self.cells[word_index] & bit_mask == 0 {
+                self.cells[word_index] |= bit_mask;
                 count += 1;
             }
         }
@@ -77,23 +77,25 @@ impl Universe {
 #[wasm_bindgen]
 impl Universe {
     pub fn tick(&mut self) {
-        let mut next = self.cells.clone();
+        let mut next = vec![0u64; self.cells.len()];
 
         for row in 0..self.height {
             for col in 0..self.width {
-                let idx = self.get_index(row, col);
-                let cell = self.cells[idx];
+                let (word_index, bit_mask) = self.get_index(row, col);
                 let live_neighbors = self.live_neighbor_count(row, col);
+                let is_alive = self.cells[word_index] & bit_mask != 0;
 
-                let next_cell = match (cell, live_neighbors) {
-                    (Cell::Alive, x) if x < 2 => Cell::Dead,
-                    (Cell::Alive, 2) | (Cell::Alive, 3) => Cell::Alive,
-                    (Cell::Alive, x) if x > 3 => Cell::Dead,
-                    (Cell::Dead, 3) => Cell::Alive,
-                    (otherwise, _) => otherwise,
+                let next_state = match (is_alive, live_neighbors) {
+                    (true, x) if x < 2 => false,
+                    (true, 2) | (true, 3) => true,
+                    (true, x) if x > 3 => false,
+                    (false, 3) => true,
+                    _ => is_alive,
                 };
 
-                next[idx] = next_cell;
+                if next_state {
+                    next[word_index] |= bit_mask;
+                }
             }
         }
 
@@ -101,8 +103,12 @@ impl Universe {
     }
 
     pub fn new(width: u32, height: u32, alive_count: u32) -> Universe {
-        let cells = vec![Cell::Dead; (width * height) as usize];
-        let mut universe = Universe { width, height, cells };
+        let num_words = ((width * height) as usize + 63) / 64; // Number of u64 words needed
+        let mut universe = Universe {
+            width,
+            height,
+            cells: vec![0; num_words],
+        };
 
         universe.randomize_alive_cells(alive_count);
 
@@ -116,22 +122,17 @@ impl Universe {
     }
 
     pub fn render(&self) -> String {
-        self.to_string()
-    }
-}
+        let mut result = String::new();
 
-use std::fmt;
-
-impl fmt::Display for Universe {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for line in self.cells.as_slice().chunks(self.width as usize) {
-            for &cell in line {
-                let symbol = if cell == Cell::Dead { "☁ " } else { "🦄" };
-                write!(f, "{}", symbol)?;
+        for row in 0..self.height {
+            for col in 0..self.width {
+                let (word_index, bit_mask) = self.get_index(row, col);
+                let symbol = if self.cells[word_index] & bit_mask != 0 { "🦄" } else { "☁ " };
+                result.push_str(symbol);
             }
-            write!(f, "\n")?;
+            result.push('\n');
         }
 
-        Ok(())
+        result
     }
 }
