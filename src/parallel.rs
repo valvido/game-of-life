@@ -43,7 +43,7 @@ pub trait LifeAlgorithm<I: Iterator<Item=(isize, isize)>> {
 	fn live_cells(&self) -> I;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Bounds {   
     pub x_min: isize,
     pub x_max: isize,
@@ -102,7 +102,7 @@ pub struct Life {
     pub generation: u64,
     pub cells: Arc<HashMap<(isize, isize), bool>>,
     parts: Vec<Arc<HashSet<(isize, isize)>>>,
-    rect: Bounds,
+    pub rect: Bounds,
     num_threads:usize,
 }
 
@@ -146,13 +146,22 @@ impl Life {
 
     pub fn randomize_alive_cells(&mut self, num_alive_cells: usize, width: isize, height: isize, rng: &mut StdRng) {
         //let mut rng = rand::thread_rng(); // Initialize random number generator
-
+        let mut count = 0;
         // Randomize the alive cells within these bounds
-        for _ in 0..num_alive_cells {
+       while count < num_alive_cells{
             let x = rng.gen_range(0..width); // x coordinate between 0 and width-1
             let y = rng.gen_range(0..height); // y coordinate between 0 and height-1
-            self.set((x, y), true); // This is valid because `Life` implements `LifeAlgorithm`
+            
+            println!("(x,y) = {}, {}", x, y);
+
+
+            if !self.cells.contains_key(&(x, y)) || !self.cells[&(x, y)] {
+                self.set((x, y), true);
+                count += 1;
+                self.rect.update_bounds(x,y);
+            }
         }
+        
     }
 
     pub fn render(&self) -> String {
@@ -381,26 +390,29 @@ use std::fmt;
 
 impl fmt::Display for Life {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        //let width = (self.rect.x_max - self.rect.x_min + 1) as usize;
-        //let height = (self.rect.y_max - self.rect.y_min + 1) as usize;
+        // Calculate width and height based on the max and min x and y coordinates
+        let width = (self.rect.x_max + 1) as usize;
+        let height = (self.rect.y_max + 1) as usize;
 
-        // Create a flat 1D vector to simulate the grid
+        // Create a 2D grid representation (a vector of strings)
         let mut grid = vec!["☁ "; width * height];
 
+        // Iterate through all alive cells and mark them in the grid
         for (&(x, y), &alive) in self.cells.iter() {
             if alive {
-                let col = (x) as usize;
-                let row = (y) as usize;
-                grid[row * width + col] = "🦄";
+                // Convert the (x, y) coordinates to the correct position in the 1D grid
+                let col = (x - self.rect.x_min) as usize;  // Convert to grid column
+                let row = (y - self.rect.y_min) as usize;  // Convert to grid row
+                grid[row * width + col] = "🦄";  // Mark alive cell as "🦄"
             }
         }
 
-        // Render the grid as lines using chunks
+        // Render the grid as lines using chunks (to simulate rows and columns)
         for line in grid.chunks(width) {
             for &cell in line {
-                write!(f, "{}", cell)?;
+                write!(f, "{}", cell)?;  // Print each cell in the row
             }
-            write!(f, "\n")?;
+            write!(f, "\n")?;  // Newline after each row
         }
 
         Ok(())

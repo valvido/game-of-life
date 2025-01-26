@@ -73,8 +73,8 @@ fn main() {
     */
 
     //grid equality check
-    let size_check = 10;
-    let iter_check = 10;
+    let size_check = 15;
+    let iter_check = 9;
     let alive_check = (0.45 * (size_check*size_check) as f64).round() as usize;
 
     let mut naive_grid_init = Universe::new(size_check, size_check, alive_check as u32, seed); // Initial grid
@@ -87,13 +87,27 @@ fn main() {
     let mut parl_grid_end = parl_grid_init.clone(); // Clone for ticking
     //parl_grid_end.advance_by(iter_check);
 
+    for (&(x, y), &alive) in parl_grid_init.cells.iter() {
+        if alive {
+            // Print each alive cell's coordinates
+            println!("Alive cell at ({}, {})", x, y);
+        }
+    }
+    println!("BOUNDS: {:?}", parl_grid_init.rect);
     println!("Naive Implementation - Initial Grid:");
     println!("{}", naive_grid_init.render()); // Uses the render method for display
     println!("Naive Implementation - Final Grid (after {} iterations):", iter_check);
     println!("{}", naive_grid_end.render()); // Uses the render method for display
 
     println!("Parallel Implementation - Initial Grid:");
+    
     println!("{}", parl_grid_init.render()); // Uses the render method for display
     println!("Parallel Implementation - Final Grid (after {} iterations):", iter_check);
-    println!("{}", parl_grid_end.render()); // Uses the render method for display
+    //println!("{}", parl_grid_end.render()); // Uses the render method for display
+
+
+    let grid_naive = naive_grid_init.to_string();
+    let grid_parallel = parl_grid_init.to_string();
+    let equality = grid_naive == grid_parallel;
+    println!("equal? {}", equality);
 }
