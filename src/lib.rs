@@ -5,7 +5,8 @@ mod utils;
 
 use cfg_if::cfg_if;
 use wasm_bindgen::prelude::*;
-use rand::Rng; // For random number generation
+use rand::{Rng, SeedableRng};
+use rand::rngs::StdRng;
 
 cfg_if! {
     // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -17,10 +18,6 @@ cfg_if! {
     }
 }
 
-#[wasm_bindgen(start)]
-pub fn main() {
-    console_error_panic_hook::set_once();
-}
 
 #[wasm_bindgen]
 #[repr(u8)]
@@ -31,11 +28,13 @@ pub enum Cell {
 }
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct Universe {
     width: u32,
     height: u32,
     cells: Vec<Cell>,
 }
+
 
 impl Universe {
     fn get_index(&self, row: u32, column: u32) -> usize {
@@ -59,13 +58,20 @@ impl Universe {
         count
     }
 
-    fn randomize_alive_cells(&mut self, alive_count: u32) {
-        let mut rng = rand::thread_rng();
+    fn randomize_alive_cells(&mut self, alive_count: u32, rng: &mut StdRng) {
+        //let mut rng = rand::thread_rng();
         let mut count = 0;
 
         // Randomly set the `alive_count` cells to Alive state
         while count < alive_count {
-            let index = rng.gen_range(0..(self.width * self.height)) as usize;
+            // Generate random coordinates in the same range as the 2D version
+            let x = rng.gen_range(0..self.width as usize);
+            let y = rng.gen_range(0..self.height as usize);
+    
+            // Map 2D coordinates to a 1D index
+            let index = (y * self.width as usize) + x;
+    
+            // Check if the cell is already alive to avoid duplicates
             if self.cells[index] == Cell::Dead {
                 self.cells[index] = Cell::Alive;
                 count += 1;
@@ -100,12 +106,12 @@ impl Universe {
         self.cells = next;
     }
 
-    pub fn new(width: u32, height: u32, alive_count: u32) -> Universe {
+    pub fn new(width: u32, height: u32, alive_count: u32,  seed: u64) -> Universe {
         let cells = vec![Cell::Dead; (width * height) as usize];
         let mut universe = Universe { width, height, cells };
 
-        universe.randomize_alive_cells(alive_count);
-
+        let mut rng = StdRng::seed_from_u64(seed);
+        universe.randomize_alive_cells(alive_count, &mut rng);
         universe
     }
 
