@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1" /> 
+    <title>Hello wasm-pack!</title>
+    <style>
+      html {
+        overscroll-behavior-x: none;
+        overscroll-behavior-y: none;
+      }
+      body {
+        overscroll-behavior-x: none;
+        overscroll-behavior-y: none;
+        font-family: "Segoe UI Symbol";
+      }
+      #game-of-life-canvas {
+      }
+      #canvas-holder{
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: black;
+        overflow: hidden;
+      }
+      #gol-options{
+        position: absolute;
+        color: white;
+        top: 0;
+        left: 0;
+        background-color: rgba(255,255,255,0.2);
+        z-index: 1;
+      }
+      #stats-display{
+        position: absolute;
+        color: white;
+        top: 0;
+        right: 0;
+        background-color: rgba(255,255,255,0.2);
+        z-index: 1;
+      }
+      #button-holder{
+        position: absolute;
+        width: 20em;
+        margin-left: -10em;
+        left: 50%;
+        bottom: 0;
+        z-index: 1;
+        border-radius:200%;
+        background-color: gray;
+        display: flex;
+        justify-content: center;
+        
+        -webkit-touch-callout: none; /* iOS Safari */
+          -webkit-user-select: none; /* Safari */
+          -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Old versions of Firefox */
+              -ms-user-select: none; /* Internet Explorer/Edge */
+                  user-select: none; /* Non-prefixed version, currently
+                                        supported by Chrome, Edge, Opera and Firefox */
+      }
+      .control-button{
+        font-size:2.7em;
+        margin-top: 9px;
+      }
+      .control-button:hover{
+        color: white;
+        cursor: pointer;
+      }
+      
+      @font-face {
+        font-family: 'Material Icons';
+        font-style: normal;
+        font-weight: 400;
+        src: url(flUhRq6tzZclQEJ-Vdg-IuiaDsNZ.ttf) format('truetype');
+      }
+
+      .material-icons {
+        font-family: 'Material Icons';
+        font-weight: normal;
+        font-style: normal;
+        line-height: 1;
+        letter-spacing: normal;
+        text-transform: none;
+        display: inline-block;
+        white-space: nowrap;
+        word-wrap: normal;
+        direction: ltr;
+      }
+    </style>
+
+  </head>
+  <body>
+    <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
+    <body>
+      <div id="gol-options">
+        <div>
+          <span>Memory limit</span>
+          <input id="garbage-select" type="range" min="18" max="30" value="22" class="slider">
+        </div>
+        <div>
+          <span>Brighness</span>
+          <input id="brightness-select" type="range" min="0" max="64" value="0" class="slider">
+        </div>
+        <div>
+          <span>Load file</span>
+          <input id="rle-file-input" type="file">
+        </div>
+        <div>
+          <button id="reset-bounding-box">Zoom to origin</button>
+        </div>
+        <div>
+          Select builtin pattern
+          <select name="examples" id="examples-select">
+            <option value="examples/52513m.rle">52513m.rle</option>
+            <option value="examples/ark1.rle">ark1.rle</option>
+            <option value="examples/ark2.rle">ark2.rle</option>
+            <option value="examples/blom.rle">blom.rle</option>
+            <option value="examples/iwona.rle">iwona.rle</option>
+            <option value="examples/justyna.rle">justyna.rle</option>
+            <option value="examples/lidka-predecessor.rle">lidka-predecessor.rle</option>
+            <option value="examples/natural-LWSS.rle">natural-LWSS.rle</option>
+            <option value="examples/rabbits-relation-17423.rle">rabbits-relation-17423.rle</option>
+            <option value="examples/rabbits-relation-17465.rle">rabbits-relation-17465.rle</option>
+            <option value="examples/temp-pulsars-big-s.rle">temp-pulsars-big-s.rle</option>
+        </select>
+       </div>
+       <div>
+         <button id="download-rle">Download</button>
+       </div>
+      </div>
+      <div id="stats-display">
+        <div>
+          Live cells:
+          <span id="cell-count"></span>
+        </div>
+        <div>
+          Age:
+          <span id="universe-age"></span>
+        </div>
+        <div>
+          Cached hash count:
+          <span id="cached-hash-count"></span>
+        </div>
+        <div>
+          Static hash count:
+          <span id="static-hash-count"></span>
+        </div>
+        <div>
+          Max memory usage:
+          <span id="max-memory-display"></span>MB
+        </div>
+        <div>
+          Brightness:
+          <span id="brightness-display"></span>
+        </div>
+        <div>
+          Steps per frame:
+          <span id="steps-per-frame"></span>
+        </div>
+        <div>
+          Max frames per second:
+          <span id="frames-per-second"></span>
+        </div>
+        <div>
+          Cells per pixel:
+          <span id="zoom-ratio"></span>
+        </div>
+      </div>
+      <div id="canvas-holder">
+        <canvas id="game-of-life-canvas"></canvas>
+      </div>
+      <div id="button-holder">
+        <span id="decrease-speed" class="control-button"><i class="material-icons">skip_previous</i></span>
+        <span id="fast-backwards" class="control-button"><i class="material-icons">fast_rewind</i></span>
+        <span id="play-pause" class="control-button"><i class="material-icons">pause</i></span>
+        <span id="fast-forwards" class="control-button"><i class="material-icons">fast_forward</i></span>
+        <span id="increase-speed" class="control-button"><i class="material-icons">skip_next</i></span>
+      </div>
+    </body>
+    <script src="wasm_hashlife.js" type="module"></script>
+    <script src="index.js" type="module"></script>
+  </body>
+</html>

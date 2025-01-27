@@ -1,86 +1,60 @@
-<div align="center">
+# Hashlife algorithm in Rust in Web browser <img src="docs/hashlife_splash.png" width=50px/>
 
-  <h1><code>wasm-pack-template</code></h1>
+Awhile ago, I wanted to play around with web-centric computing using webassembly and rust. For a project, I picked out the hash-life algorithm, an super-fast algorithm for simulating Conway's Game of life. 
 
-  <strong>A template for kick starting a Rust and WebAssembly project using <a href="https://github.com/rustwasm/wasm-pack">wasm-pack</a>.</strong>
+The app looks like this (<a href="https://benblack769.github.io/hashlife-rust/" target="_blank" rel="noopener noreferrer">click to go to deployed demo</a>):
 
-  <p>
-    <a href="https://travis-ci.org/rustwasm/wasm-pack-template"><img src="https://img.shields.io/travis/rustwasm/wasm-pack-template.svg?style=flat-square" alt="Build Status" /></a>
-  </p>
+<a href="https://benblack769.github.io/hashlife-rust/" target="_blank" rel="noopener noreferrer">
+<img src="./docs/full_app_screenshot.png" alt="full_app_screenshot"/>
+</a>
 
-  <h3>
-    <a href="https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html">Tutorial</a>
-    <span> | </span>
-    <a href="https://discordapp.com/channels/442252698964721669/443151097398296587">Chat</a>
-  </h3>
+To test the full power of the hashlife algorithm, I would recommend:
 
-  <sub>Built with 🦀🕸 by <a href="https://rustwasm.github.io/">The Rust and WebAssembly Working Group</a></sub>
-</div>
+1. "Select builtin pattern" and selecting either "twinprimes.rle"
+2. Pressing both "fast-forward" button and the "skip" button a few times
+3. Increasing the brightness to the max
+4. Waiting for a few seconds.
 
-## About
+You should see the results look something like this:
 
-[**📚 Read this template tutorial! 📚**][template-docs]
+![twinprimes-screenshot](./docs/twinprimes.png)
 
-This template is designed for compiling Rust libraries into WebAssembly and
-publishing the resulting package to NPM.
+Note that the dots coming out of the machine correspond one to one with the twin primes! This works because the machine acts like a prime sieve, eliminating all non-primes, and then also eliminating unpaired primes.
 
-Be sure to check out [other `wasm-pack` tutorials online][tutorials] for other
-templates and usages of `wasm-pack`.
+* Code here: [https://github.com/benblack769/hashlife-rust](https://github.com/benblack769/hashlife-rust)
+* You can learn more about hashlife here: https://www.dev-mind.blog/hashlife/ 
 
-[tutorials]: https://rustwasm.github.io/docs/wasm-pack/tutorials/index.html
-[template-docs]: https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html
 
-## 🚴 Usage
+#### Key learnings
 
-### 🐑 Use `cargo generate` to Clone this Template
+* The toolchain for developing wasm and js bindings from rust is pretty mature. I was able to do everything without any trouble. 
+* It is easiest to start out without build tooling, and add that it later if you need to plug it into a larger project.
+* Remember that webassembly doesn't have great support for garbage collection. Programming in rust helps with this.
+* It is fun to implement an algorithm like this without frameworks
 
-[Learn more about `cargo generate` here.](https://github.com/ashleygwilliams/cargo-generate)
 
-```
-cargo generate --git https://github.com/rustwasm/wasm-pack-template.git --name my-project
-cd my-project
-```
+### Development
 
-### 🛠️ Build with `wasm-pack build`
+While this repo is not looking for any contributions and is feature frozen, if you want to fork it and add your own cool features, here is how to build it.
 
-```
-wasm-pack build
-```
+#### Install dependencies
 
-### 🔬 Test in Headless Browsers with `wasm-pack test`
+1. Install [`cargo`](https://www.rust-lang.org/tools/install) (rust build tools)
+2. Install [`wasm-pack`](https://github.com/rustwasm/wasm-pack) (rust-wasm interface builder)
+
+#### Build
 
 ```
-wasm-pack test --headless --firefox
+cd wasm-hashlife
+wasm-pack build --release --target web
+cd ..
+cp wasm-hashlife/pkg/wasm_hashlife* frontend/
 ```
 
-### 🎁 Publish to NPM with `wasm-pack publish`
+#### View locally
 
 ```
-wasm-pack publish
+cd frontend
+python -m http.server
 ```
-
-## 🔋 Batteries Included
-
-* [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) for communicating
-  between WebAssembly and JavaScript.
-* [`console_error_panic_hook`](https://github.com/rustwasm/console_error_panic_hook)
-  for logging panic messages to the developer console.
-* `LICENSE-APACHE` and `LICENSE-MIT`: most Rust projects are licensed this way, so these are included for you
-
-## License
-
-Licensed under either of
-
-* Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-* MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option.
-
-### Contribution
-
-Unless you explicitly state otherwise, any contribution intentionally
-submitted for inclusion in the work by you, as defined in the Apache-2.0
-license, shall be dual licensed as above, without any additional terms or
-conditions.
-# game-of-life-naive
-# game-of-life
+View on [http://localhost:8000/](http://localhost:8000/). Enjoy!

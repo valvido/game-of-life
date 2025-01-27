@@ -1,0 +1,14 @@
+[package]
+name = "hashlife-cli"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+hashlife-fast = { path = "../hashlife-algo", version = "0.1.0" }
+png = "0.17.5"
+
+[profile.release]
+opt-level = 3  # Optimize for size.
+debug = 1

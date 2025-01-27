@@ -1,0 +1,16 @@
+[package]
+name = "hashlife-fast"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+metrohash = "1.0.6"
+
+[profile.release]
+opt-level = 3  # Optimize for size.
+panic = "abort"
+lto = true
+codegen-units = 1
+
