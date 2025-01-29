@@ -1,19 +1,19 @@
 extern crate cfg_if;
 extern crate wasm_bindgen;
+pub mod sparse_matrix;
+
+
 
 mod utils;
 
 use cfg_if::cfg_if;
 use wasm_bindgen::prelude::*;
-use rand::Rng; // For random number generation
 
 cfg_if! {
-    // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
-    // allocator.
     if #[cfg(feature = "wee_alloc")] {
         extern crate wee_alloc;
         #[global_allocator]
-        static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+        static ALLOC: wee_alloc::WeeAlloc = wee_alloc::INIT;
     }
 }
 
@@ -34,7 +34,7 @@ pub enum Cell {
 pub struct Universe {
     width: u32,
     height: u32,
-    cells: Vec<Cell>,
+    cells: Vec<Cell>, // Private field
 }
 
 impl Universe {
@@ -57,20 +57,6 @@ impl Universe {
             }
         }
         count
-    }
-
-    fn randomize_alive_cells(&mut self, alive_count: u32) {
-        let mut rng = rand::thread_rng();
-        let mut count = 0;
-
-        // Randomly set the `alive_count` cells to Alive state
-        while count < alive_count {
-            let index = rng.gen_range(0..(self.width * self.height)) as usize;
-            if self.cells[index] == Cell::Dead {
-                self.cells[index] = Cell::Alive;
-                count += 1;
-            }
-        }
     }
 }
 
@@ -100,13 +86,9 @@ impl Universe {
         self.cells = next;
     }
 
-    pub fn new(width: u32, height: u32, alive_count: u32) -> Universe {
-        let cells = vec![Cell::Dead; (width * height) as usize];
-        let mut universe = Universe { width, height, cells };
-
-        universe.randomize_alive_cells(alive_count);
-
-        universe
+    pub fn new_with_cells(width: u32, height: u32, cells: Vec<Cell>) -> Universe {
+        assert_eq!(cells.len(), (width * height) as usize);
+        Universe { width, height, cells }
     }
 
     pub fn run_iterations(&mut self, iterations: u32) {
@@ -117,6 +99,20 @@ impl Universe {
 
     pub fn render(&self) -> String {
         self.to_string()
+    }
+
+    // Getter method to expose the cells for rendering
+    pub fn get_cells(&self) -> Vec<u8> {
+        self.cells.iter().map(|&cell| cell as u8).collect()
+    }
+
+    // Additional method to expose width and height if needed
+    pub fn get_width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn get_height(&self) -> u32 {
+        self.height
     }
 }
 
