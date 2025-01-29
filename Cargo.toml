@@ -24,6 +24,7 @@ plotters = "0.3.4"
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.7", optional = true }
 
+
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"
 
