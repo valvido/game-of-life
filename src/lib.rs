@@ -1,12 +1,12 @@
 extern crate cfg_if;
 extern crate wasm_bindgen;
+extern crate sysinfo; // Add sysinfo crate
+
 pub mod sparse_matrix;
-
-
-
 mod utils;
 
 use cfg_if::cfg_if;
+use sysinfo::{System, SystemExt}; // Import sysinfo
 use wasm_bindgen::prelude::*;
 
 cfg_if! {
@@ -15,6 +15,14 @@ cfg_if! {
         #[global_allocator]
         static ALLOC: wee_alloc::WeeAlloc = wee_alloc::INIT;
     }
+}
+
+// Function to print memory usage
+fn print_memory_usage(label: &str) {
+    let mut sys = System::new_all();
+    sys.refresh_memory();
+    let memory_used = sys.used_memory();
+    println!("{} - Memory Usage: {} MB", label, memory_used / 1024);
 }
 
 #[wasm_bindgen(start)]
@@ -92,9 +100,18 @@ impl Universe {
     }
 
     pub fn run_iterations(&mut self, iterations: u32) {
-        for _ in 0..iterations {
+        print_memory_usage("Before Running Iterations");
+
+        for i in 0..iterations {
             self.tick();
+
+            // Print memory usage every 5 iterations for better tracking
+            if i % 5 == 0 {
+                print_memory_usage(&format!("During Iteration {}", i));
+            }
         }
+
+        print_memory_usage("After Running Iterations");
     }
 
     pub fn render(&self) -> String {

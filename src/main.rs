@@ -8,10 +8,28 @@ use wasm_game_of_life::sparse_matrix::Universe as SparseUniverse;
 use track_alive_cells::Universe as TrackAliveCellsUniverse;
 use std::time::Instant;
 use rand::Rng;
+use sysinfo::{System, SystemExt};
+
+// function for printing memory usage that I transwered inside the files ionstead of in the main
+// fn print_memory_usage(label: &str) {
+//     let mut sys = System::new_all();
+//     sys.refresh_all();
+//     let memory_used = sys.used_memory();
+//     let memory_total = sys.total_memory();
+
+//     println!(
+//         "{} - Memory Usage: {} MB / {} MB",
+//         label,
+//         memory_used / 1024,
+//         memory_total / 1024
+//     );
+// }
 
 fn main() {
-    let width = 100;
-    let height = 100;
+    let width = 1000;
+    let height = 1000;
+
+   
 
     // Generate initial state with random 0s and 1s
     let mut rng = rand::thread_rng();
@@ -36,6 +54,8 @@ fn main() {
             })
         })
         .collect();
+
+    
 
     // ===== Naive Implementation =====
     println!("Naive Game of Life:");
