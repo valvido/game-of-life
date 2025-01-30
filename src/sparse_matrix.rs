@@ -1,5 +1,15 @@
 use wasm_bindgen::prelude::*;
 use std::collections::{HashMap, HashSet};
+extern crate sysinfo;
+use sysinfo::{System, SystemExt}; 
+
+// Function to print memory usage
+fn print_memory_usage(label: &str) {
+    let mut sys = System::new_all();
+    sys.refresh_memory();
+    let memory_used = sys.used_memory();
+    println!("{} - Memory Usage: {} MB", label, memory_used / 1024);
+}
 
 #[wasm_bindgen]
 #[repr(u8)]
@@ -58,7 +68,7 @@ impl Universe {
         self.live_cells = next_live_cells;
     }
 
-    pub fn new_with_matrix(width: u32, height: u32, flat_matrix: Vec<u8>) -> Universe {
+    pub fn new_with_matrix(width: u32, height: u32, flat_matrix: Vec<usize>) -> Universe {
         let mut live_cells = HashSet::new();
 
         for (index, &value) in flat_matrix.iter().enumerate() {
@@ -77,9 +87,19 @@ impl Universe {
     }
 
     pub fn run_iterations(&mut self, iterations: u32) {
-        for _ in 0..iterations {
+
+        print_memory_usage("Before Running Iterations");
+
+        for i in 0..iterations {
             self.tick();
+
+            // Print memory usage every 5 iterations for better tracking
+            if i % 5 == 0 {
+                print_memory_usage(&format!("During Iteration {}", i));
+            }
         }
+
+        print_memory_usage("After Running Iterations");
     }
 
     pub fn render(&self) -> String {
@@ -87,9 +107,9 @@ impl Universe {
         for row in 0..self.height {
             for col in 0..self.width {
                 if self.live_cells.contains(&(row, col)) {
-                    buffer.push('1');
+                    buffer.push('■');
                 } else {
-                    buffer.push('0');
+                    buffer.push('□');
                 }
             }
             buffer.push('\n');
