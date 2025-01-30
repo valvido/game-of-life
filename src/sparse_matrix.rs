@@ -68,7 +68,7 @@ impl Universe {
         self.live_cells = next_live_cells;
     }
 
-    pub fn new_with_matrix(width: u32, height: u32, flat_matrix: Vec<u8>) -> Universe {
+    pub fn new_with_matrix(width: u32, height: u32, flat_matrix: Vec<usize>) -> Universe {
         let mut live_cells = HashSet::new();
 
         for (index, &value) in flat_matrix.iter().enumerate() {
@@ -107,9 +107,9 @@ impl Universe {
         for row in 0..self.height {
             for col in 0..self.width {
                 if self.live_cells.contains(&(row, col)) {
-                    buffer.push('1');
+                    buffer.push('■');
                 } else {
-                    buffer.push('0');
+                    buffer.push('□');
                 }
             }
             buffer.push('\n');

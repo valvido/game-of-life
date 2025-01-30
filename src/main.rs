@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 mod optimized_alg; 
 mod track_alive_cells; 
 mod parallelize;
@@ -25,12 +26,31 @@ use sysinfo::{System, SystemExt};
 //     );
 // }
 
+use std::env;
+
+mod utils;
+use utils::*;
+
+
 fn main() {
-    let width = 1000;
-    let height = 1000;
 
-   
+     /* // Get initial grid file from command line
+    let args: Vec<String> = env::args().collect();
+    let file_name = &args[1];
+     */
 
+    let file_name = "blom.rle";
+
+    let file_path = format!("./grids/{}", file_name);
+
+    let flat_matrix =  init_from_file(&file_path);
+
+    let grid_size = (flat_matrix.len() as f64).sqrt().floor() as usize;
+  
+    let width = grid_size;
+    let height = grid_size;
+
+    /*
     // Generate initial state with random 0s and 1s
     let mut rng = rand::thread_rng();
     let initial_state: Vec<Vec<u8>> = (0..height)
@@ -39,7 +59,8 @@ fn main() {
 
     // Flatten the matrix for sparse implementation
     let flat_matrix: Vec<u8> = initial_state.iter().flatten().cloned().collect();
-
+    */
+  
     // Convert initial_state to a list of live cells (for Track-Alive-Cells & Parallelized version)
     let initial_live_cells: Vec<(usize, usize)> = initial_state
         .iter()
@@ -59,6 +80,7 @@ fn main() {
 
     // ===== Naive Implementation =====
     println!("Naive Game of Life:");
+    let initial_state = vec_to_matrix(&flat_matrix, grid_size);
     let initial_cells: Vec<NaiveCell> = initial_state
         .iter()
         .flatten()
