@@ -86,7 +86,7 @@ impl Universe {
         }
     }
 
-    pub fn run_iterations(&mut self, iterations: u32) {
+    pub fn run_iterations(&mut self, iterations: usize) {
 
         print_memory_usage("Before Running Iterations");
 

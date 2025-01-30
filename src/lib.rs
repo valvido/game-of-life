@@ -99,7 +99,7 @@ impl Universe {
         Universe { width, height, cells }
     }
 
-    pub fn run_iterations(&mut self, iterations: u32) {
+    pub fn run_iterations(&mut self, iterations: usize) {
         print_memory_usage("Before Running Iterations");
 
         for i in 0..iterations {
