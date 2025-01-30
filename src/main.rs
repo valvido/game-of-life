@@ -2,6 +2,8 @@
 mod optimized_alg;
 mod track_alive_cells;
 mod parallelize;
+mod parallel_alex;
+use parallel_alex:: Universe as ParallelAlexUniverse;
 use parallelize::Universe as ParallelUniverse;
 use optimized_alg::Universe as OptimizedUniverse;
 use wasm_game_of_life::{Universe as NaiveUniverse, Cell as NaiveCell};
@@ -107,4 +109,12 @@ fn main() {
     parallel_universe.run_iterations(10);
     let parallel_time = start_parallel.elapsed().as_millis();
     println!("Parallelized Approach: {} ms", parallel_time);
+
+    // ===== Alex's Parallelized Version =====
+    println!("\nParallelized Game of Life:");
+    let mut Alex_parallel_universe = ParallelAlexUniverse::new_with_matrix(width, height, flat_matrix);
+    let start_parallel_Alex = Instant::now();
+    Alex_parallel_universe.run_iterations(10);
+    let parallel_time_Alex = start_parallel_Alex.elapsed().as_millis();
+    println!("Alex parallelized Approach: {} ms", parallel_time_Alex);
 }
