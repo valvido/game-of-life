@@ -2,13 +2,13 @@
 mod optimized_alg;
 mod track_alive_cells;
 mod parallelize;
-mod parallel_alex;
-use parallel_alex:: Universe as ParallelAlexUniverse;
+mod bitwise; // Import the Bitwise Universe module
 use parallelize::Universe as ParallelUniverse;
 use optimized_alg::Universe as OptimizedUniverse;
 use wasm_game_of_life::{Universe as NaiveUniverse, Cell as NaiveCell};
 use wasm_game_of_life::sparse_matrix::Universe as SparseUniverse;
 use track_alive_cells::Universe as TrackAliveCellsUniverse;
+use bitwise::Universe as BitwiseUniverse;
 use std::time::Instant;
 use rand::Rng;
 use sysinfo::{System, SystemExt};
@@ -21,7 +21,7 @@ use utils::*;
 fn main() {
     // File name of the grid
     let file_name = "blom.rle";
-    let file_path = format!("../grids/{}", file_name);
+    let file_path = format!("./grids/{}", file_name);
 
 
     // Read RLE file and initialize the flat matrix
@@ -102,7 +102,7 @@ fn main() {
     let mut parallel_universe = ParallelUniverse::new(
         width as usize,
         height as usize,
-        initial_live_cells, // Use original since it was cloned before
+        initial_live_cells.clone(), // Use original since it was cloned before
     );
 
     let start_parallel = Instant::now();
@@ -110,11 +110,12 @@ fn main() {
     let parallel_time = start_parallel.elapsed().as_millis();
     println!("Parallelized Approach: {} ms", parallel_time);
 
-    // ===== Alex's Parallelized Version =====
-    println!("\nParallelized Game of Life:");
-    let mut Alex_parallel_universe = ParallelAlexUniverse::new_with_matrix(width, height, flat_matrix);
-    let start_parallel_Alex = Instant::now();
-    Alex_parallel_universe.run_iterations(10);
-    let parallel_time_Alex = start_parallel_Alex.elapsed().as_millis();
-    println!("Alex parallelized Approach: {} ms", parallel_time_Alex);
+        // ===== Bitwise Implementation =====
+        println!("\nBitwise Game of Life:");
+        let alive_count = initial_live_cells.len() as u32;
+        let mut bitwise_universe = BitwiseUniverse::new(width, height, alive_count);
+        let start_bitwise = Instant::now();
+        bitwise_universe.run_iterations(10);
+        let bitwise_time = start_bitwise.elapsed().as_millis();
+        println!("Bitwise Approach: {} ms", bitwise_time);
 }
