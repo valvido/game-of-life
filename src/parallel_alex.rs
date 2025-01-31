@@ -28,15 +28,15 @@ pub enum Cell {
 #[wasm_bindgen]
 #[derive(Clone, Debug)]
 pub struct Universe {
-    width: u32,
-    height: u32,
-    live_cells: HashSet<(u32, u32)>,
+    width: usize,
+    height: usize,
+    live_cells: HashSet<(u8, u8)>,
 }
 
 // helper functions
 impl Universe {
-    fn get_neighbors(&self, row: u32, col: u32) -> Vec<(u32, u32)> {
-        let deltas = [-1, 0, 1];
+    fn get_neighbors(&self, row: u8, col: u8) -> Vec<(u8, u8)> {
+        let deltas: [isize; 3] = [-1, 0, 1];
         let mut neighbors = Vec::new();
 
         for &delta_row in &deltas {
@@ -44,16 +44,15 @@ impl Universe {
                 if delta_row == 0 && delta_col == 0 {
                     continue;
                 }
-                let neighbor_row = (((self.height as i32) + (row as i32) + (delta_row as i32)) as u32) % (self.height);
-                let neighbor_col = (((self.width as i32)  + (col as i32) + (delta_col as i32)) as u32) % (self.width);
+                let neighbor_row = ((row as isize + delta_row + self.height as isize) % self.height as isize) as u8;
+                let neighbor_col = ((col as isize + delta_col + self.width as isize) % self.width as isize) as u8;
                 neighbors.push((neighbor_row, neighbor_col));
             }
         }
-
         neighbors
     }
 
-    fn rules(is_alive: bool, neighbor_count: u32) -> bool {
+    fn rules(is_alive: bool, neighbor_count: u8) -> bool {
         match (is_alive, neighbor_count) {
             (true, 2) | (_, 3) => true, // Stays alive or comes to life
             _ => false, // Dies
@@ -65,11 +64,11 @@ impl Universe {
 // generation calculation
 #[wasm_bindgen]
 impl Universe {
-    pub fn next_gen(&mut self) {
+    pub fn tick(&mut self) {
         let live_cells = &self.live_cells;
 
          // Count neighbors using parallel iteration
-        let neighbor_counts: HashMap<(u32, u32), u32> = live_cells
+        let neighbor_counts: HashMap<(u8, u8), u8> = live_cells
             .par_iter()
             .flat_map(|&(row, col)| self.get_neighbors(row, col))
             .fold(
@@ -92,7 +91,7 @@ impl Universe {
 
         
         // Compute next state in parallel
-        let next_state: HashSet<(u32, u32)> = neighbor_counts
+        let next_state: HashSet<(u8, u8)> = neighbor_counts
             .par_iter()
             .filter_map(|(&cell, &count)| {
                 let is_alive = live_cells.contains(&cell);
@@ -134,13 +133,13 @@ impl Universe {
 
     }
 
-    pub fn new_with_matrix(width: u32, height: u32, flat_matrix: Vec<u8>) -> Universe {
+    pub fn new_with_matrix(width: usize, height: usize, flat_matrix: Vec<u8>) -> Universe {
         let mut live_cells = HashSet::new();
 
         for (index, &value) in flat_matrix.iter().enumerate() {
             if value == 1 {
-                let row = index as u32 / width;
-                let col = index as u32 % width;
+                let row = index as u8 / (width as u8);
+                let col = index as u8 % (width as u8);
                 live_cells.insert((row, col));
             }
         }
@@ -155,7 +154,7 @@ impl Universe {
         /// Runs the game for the specified number of iterations (ticks).
         pub fn run_iterations(&mut self, iterations: usize) {
             for _ in 0..iterations {
-                self.next_gen();
+                self.tick();
             }
         }
 
@@ -163,7 +162,7 @@ impl Universe {
         let mut buffer = String::new();
         for row in 0..self.height {
             for col in 0..self.width {
-                if self.live_cells.contains(&(row, col)) {
+                if self.live_cells.contains(&(row as u8, col as u8)) {
                     buffer.push_str("🦄");
                 } else {
                     buffer.push_str("☁ ");
@@ -183,3 +182,4 @@ impl fmt::Display for Universe {
         write!(f, "{}", self.render())
     }
 }
+

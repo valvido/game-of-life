@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use rayon::prelude::*;
 
 pub struct Universe {
@@ -133,3 +134,5 @@ impl Universe {
         buffer
     }
 }
+
+

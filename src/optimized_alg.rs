@@ -1,6 +1,7 @@
-//this is still a consequential algorithm but it has some optimizations for cache eficiency
 
+#![allow(dead_code)]
 
+//this is still a sequential algorithm but it has some optimizations for cache eficiency
 pub struct Universe {
     width: usize,           // The width of the grid (number of columns)
     height: usize,          // The height of the grid (number of rows)
@@ -99,3 +100,4 @@ impl Universe {
         buffer
     }
 }
+

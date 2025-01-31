@@ -3,6 +3,8 @@ mod optimized_alg;
 mod track_alive_cells;
 mod parallelize;
 mod parallel_alex;
+mod traits;  // This declares the traits module
+use crate::traits::TickUniv;
 use parallel_alex:: Universe as ParallelAlexUniverse;
 use parallelize::Universe as ParallelUniverse;
 use optimized_alg::Universe as OptimizedUniverse;
@@ -14,28 +16,50 @@ use rand::Rng;
 use sysinfo::{System, SystemExt};
 use std::env;
 use std::convert::TryInto;
+use std::fs::File;
+use std::io::{self, Write};
+use csv::Writer;
+
 
 mod utils;
 use utils::*;
 
-fn main() {
-    // File name of the grid
-    let file_name = "blom.rle";
-    let file_path = format!("../grids/{}", file_name);
+enum AnyUniverse {
+    Naive(NaiveUniverse),
+    Sparse(SparseUniverse),
+    Optimized(OptimizedUniverse),
+    TrackAliveCells(TrackAliveCellsUniverse),
+    Parallel(ParallelUniverse),
+    ParallelAlex(ParallelAlexUniverse),
+}
 
 
-    // Read RLE file and initialize the flat matrix
-    let flat_matrix: Vec<u8> = init_from_file(&file_path).into_iter().map(|x| x as u8).collect();
+fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
+    NaiveUniverse,
+    SparseUniverse,
+    OptimizedUniverse,
+    TrackAliveCellsUniverse,
+    ParallelUniverse,
+    ParallelAlexUniverse,
+) {
+      // NAIVE
+    // Convert flat matrix to 2D representation
+    let initial_state = vec_to_matrix(&flat_matrix, width);
+    let initial_structcells: Vec<NaiveCell> = initial_state
+        .iter()
+        .flatten()
+        .map(|&x| if x == 1 { NaiveCell::Alive } else { NaiveCell::Dead })
+        .collect();
+    let naive_universe = NaiveUniverse::new_with_cells(width, height, initial_structcells);
 
-    let grid_size = (flat_matrix.len() as f64).sqrt().floor() as usize;
-    let width: u32 = grid_size.try_into().unwrap();
-    let height: u32 = grid_size.try_into().unwrap();
+    // SPARSE
+    let sparse_universe = SparseUniverse::new_with_matrix(width, height, flat_matrix.clone());
 
-    // Convert flat matrix to a 2D representation
-    let initial_state = vec_to_matrix(&flat_matrix, grid_size);
+    // OPTIMIZED
+    let optimized_universe = OptimizedUniverse::new(width, height, flat_matrix.clone());
 
-    // Convert initial_state to a list of live cells (for Track-Alive-Cells & Parallelized version)
-    let initial_live_cells: Vec<(usize, usize)> = initial_state
+    // TRACK
+    let initial_trackparl_cells: Vec<(usize, usize)> = initial_state
         .iter()
         .enumerate()
         .flat_map(|(row, cols)| {
@@ -48,73 +72,178 @@ fn main() {
             })
         })
         .collect();
-
-    // ===== Naive Implementation =====
-    println!("Naive Game of Life:");
-    let initial_cells: Vec<NaiveCell> = initial_state
-        .iter()
-        .flatten()
-        .map(|&x| if x == 1 { NaiveCell::Alive } else { NaiveCell::Dead })
-        .collect();
-
-    let mut naive_universe = NaiveUniverse::new_with_cells(width, height, initial_cells);
-    let start_naive = Instant::now();
-    naive_universe.run_iterations(10);
-    let naive_time = start_naive.elapsed().as_millis();
-    println!("Naive Approach: {} ms", naive_time);
-
-    // ===== Sparse Matrix Implementation =====
-    println!("\nSparse Matrix Game of Life Algorithm:");
-
-    // Convert `flat_matrix` from `Vec<u8>` to `Vec<usize>` before passing
-    let flat_matrix_usize: Vec<usize> = flat_matrix.iter().map(|&x| x as usize).collect();
-
-    let mut sparse_universe = SparseUniverse::new_with_matrix(width, height, flat_matrix_usize);
-    let start_sparse = Instant::now();
-    sparse_universe.run_iterations(10);
-    let sparse_time = start_sparse.elapsed().as_millis();
-    println!("Sparse-Matrix Approach: {} ms", sparse_time);
-
-    // ===== Optimized Version =====
-    println!("\nOptimized Game of Life Algorithm:");
-    let flat_initial_state: Vec<u8> = flat_matrix.clone();
-    let mut optimized_universe = OptimizedUniverse::new(width as usize, height as usize, flat_initial_state);
-    let start_optimized = Instant::now();
-    optimized_universe.run_iterations(10);
-    let optimized_time = start_optimized.elapsed().as_millis();
-    println!("Optimized Cache Algorithm: {} ms", optimized_time);
-
-    // ===== Track-Alive-Cells Implementation =====
-    println!("\nTrack-Alive-Cells Algorithm:");
-    let mut track_alive_cells_universe = TrackAliveCellsUniverse::new(
-        width as usize,
-        height as usize,
-        initial_live_cells.clone(), // Clone here to preserve for parallel version
+    let track_alive_cells_universe = TrackAliveCellsUniverse::new(
+        width,
+        height,
+        initial_trackparl_cells.clone(), // Clone here to preserve for parallel version
     );
 
-    let start_track_alive = Instant::now();
-    track_alive_cells_universe.run_iterations(10);
-    let track_alive_time = start_track_alive.elapsed().as_millis();
-    println!("Track-Alive-Cells Approach: {} ms", track_alive_time);
+    // PARALLEL
+    let parallel_universe = ParallelUniverse::new(width, height, initial_trackparl_cells.clone());
 
-    // ===== Parallelized Version =====
-    println!("\nParallelized Game of Life:");
-    let mut parallel_universe = ParallelUniverse::new(
-        width as usize,
-        height as usize,
-        initial_live_cells, // Use original since it was cloned before
-    );
+    //PARALLEL ALEX
+    let alex_parallel_universe = ParallelAlexUniverse::new_with_matrix(width, height, flat_matrix.clone());
 
-    let start_parallel = Instant::now();
-    parallel_universe.run_iterations(10);
-    let parallel_time = start_parallel.elapsed().as_millis();
-    println!("Parallelized Approach: {} ms", parallel_time);
+    (naive_universe, sparse_universe, optimized_universe, track_alive_cells_universe, parallel_universe, alex_parallel_universe)
+}
 
-    // ===== Alex's Parallelized Version =====
-    println!("\nParallelized Game of Life:");
-    let mut Alex_parallel_universe = ParallelAlexUniverse::new_with_matrix(width, height, flat_matrix);
-    let start_parallel_Alex = Instant::now();
-    Alex_parallel_universe.run_iterations(10);
-    let parallel_time_Alex = start_parallel_Alex.elapsed().as_millis();
-    println!("Alex parallelized Approach: {} ms", parallel_time_Alex);
+
+
+fn get_memory_usage() -> u64 {
+    let mut sys = System::new_all();
+    sys.refresh_memory();
+    sys.used_memory() // Returns memory usage in KB
+}
+
+fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128, Vec<u128>, Vec<u64>) {
+    
+    let mut iteration_times = Vec::new();
+    let mut memory_use = Vec::new();
+    let global_start = Instant::now(); 
+
+    match universe {
+        AnyUniverse::Naive(u) => u.run_iterations(iterations),
+        AnyUniverse::Sparse(u) => u.run_iterations(iterations),
+        AnyUniverse::Optimized(u) => u.run_iterations(iterations),
+        AnyUniverse::TrackAliveCells(u) => u.run_iterations(iterations),
+        AnyUniverse::Parallel(u) => u.run_iterations(iterations),
+        AnyUniverse::ParallelAlex(u) => u.run_iterations(iterations),
+    }
+    let global_time = global_start.elapsed().as_millis(); // Total elapsed time
+
+    let mut iter_start = Instant::now();
+    //measuring every 10 iterations
+    for i in 0..iterations {
+        if i % 10 == 0 {
+            iter_start = Instant::now();
+            // Match on the enum and call the corresponding tick() method
+            match universe {
+                AnyUniverse::Naive(u) => u.tick(),
+                AnyUniverse::Sparse(u) => u.tick(),
+                AnyUniverse::Optimized(u) => u.tick(),
+                AnyUniverse::TrackAliveCells(u) => u.tick(),
+                AnyUniverse::Parallel(u) => u.tick(),
+                AnyUniverse::ParallelAlex(u) => u.tick(),
+            }
+            //memory_use.push(get_memory_usage()/1024);
+        } else if i % 10 == 9 {
+            match universe {
+                AnyUniverse::Naive(u) => u.tick(),
+                AnyUniverse::Sparse(u) => u.tick(),
+                AnyUniverse::Optimized(u) => u.tick(),
+                AnyUniverse::TrackAliveCells(u) => u.tick(),
+                AnyUniverse::Parallel(u) => u.tick(),
+                AnyUniverse::ParallelAlex(u) => u.tick(),
+            }
+            let iter_time = iter_start.elapsed().as_millis();
+            iteration_times.push(iter_time);
+        } else {
+            match universe {
+                AnyUniverse::Naive(u) => u.tick(),
+                AnyUniverse::Sparse(u) => u.tick(),
+                AnyUniverse::Optimized(u) => u.tick(),
+                AnyUniverse::TrackAliveCells(u) => u.tick(),
+                AnyUniverse::Parallel(u) => u.tick(),
+                AnyUniverse::ParallelAlex(u) => u.tick(),
+            }
+        }
+    }
+    memory_use.push(get_memory_usage()/1024);
+    
+    (global_time, iteration_times, memory_use)
+}
+
+fn write_results_to_csv(results: &Vec<(String, u128, Vec<u128>, Vec<u64>)>, filename: &str, grid_size: (usize, usize), iterations: usize, file_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let mut wtr = Writer::from_path(filename)?;
+
+    // Write metadata as the first row
+    wtr.write_record(&[
+        &format!("File Name: {}", file_name),  // This is the file name of the input file (e.g., "justyna.rle")  // Grid Size in width x height format
+        &format!(" Width: {}", grid_size.0.to_string()),  // Width
+        &format!(" Height: {}", grid_size.1.to_string()),  // Height
+        &format!(" no. Iterations: {}", iterations.to_string()),  // Iterations
+    ])?;
+    // Write the headers
+    wtr.write_record(&["Name", "Global Time (ms)", "Times per 10 Iterations", "Memory Usage (MB)"])?;
+
+    for result in results {
+        let name = &result.0;
+        let global_time = result.1;
+        let iteration_times = format!("{:?}", result.2);  // Convert Vec to string
+        let memory_use = format!("{:?}", result.3);
+
+        // Write each row in the CSV
+        wtr.write_record(&[name, &global_time.to_string(), &iteration_times, &memory_use.to_string()])?;
+    }
+
+    wtr.flush()?;
+    Ok(())
+}
+
+
+
+
+
+
+
+
+
+fn main() {
+    // File name of the grid
+    let file_name = "blom.rle";
+    let file_path = format!("./grids/{}", file_name);
+
+
+    // Read RLE file and initialize the flat matrix
+    let flat_matrix: Vec<u8> = init_from_file(&file_path).into_iter().map(|x| x as u8).collect();
+
+    let grid_size = (flat_matrix.len() as f64).sqrt().floor() as usize;
+    let width: usize = grid_size.try_into().unwrap();
+    let height: usize = grid_size.try_into().unwrap();
+    let iterations: usize = 1000;
+
+
+    
+
+    // --- Initialization ---
+    let ( naive_universe,  sparse_universe,  optimized_universe,  track_alive_cells_universe,  parallel_universe, alexparl_universe) = initialize_all(flat_matrix, width, height);
+    let mut initial_universes: Vec<AnyUniverse> = vec![
+        AnyUniverse::Naive(naive_universe),
+        AnyUniverse::Sparse(sparse_universe),
+        AnyUniverse::Optimized(optimized_universe),
+        AnyUniverse::TrackAliveCells(track_alive_cells_universe),
+        AnyUniverse::Parallel(parallel_universe),
+        AnyUniverse::ParallelAlex(alexparl_universe),
+    ];
+    let universe_names = vec![
+        "Naive", 
+        "Sparse", 
+        "Optimized", 
+        "TrackAliveCells", 
+        "Parallel", 
+        "ParallelAlex"
+    ];
+
+    // --- Result Printing ---
+    let mut results = Vec::new();
+
+    for (i, univ) in initial_universes.iter_mut().enumerate() {
+        let (global_time, iteration_times, memory_use) = gather_iteration_info(univ, iterations);
+        let name = universe_names[i];  // Get the name based on index
+
+
+        // Add the result to the results vector
+        results.push((name.to_string(), global_time, iteration_times.clone(), memory_use.clone()));
+
+        // Print results
+        println!("{}: \nGlobal time: {} ms, Time for 5 iterations: {:?}, Memory use in MB: {:?}", 
+                 name, global_time, iteration_times, memory_use);
+        println!();  // Empty line after each result
+    }
+
+    let output_file_name = format!("{}_performance_results.csv", file_name);  // Use the existing `file_name` variable
+    if let Err(e) = write_results_to_csv(&results, &output_file_name, (width, height), iterations, file_name) {
+        eprintln!("Error writing to CSV file: {}", e);
+    }
+    
 }
