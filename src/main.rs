@@ -3,12 +3,17 @@ mod optimized_alg;
 mod track_alive_cells;
 mod parallelize;
 mod parallel_alex;
+mod hashlife;  // New Hashlife module
+
+use hashlife::Universe as HashlifeUniverse;  // New import for Hashlife
 use parallel_alex:: Universe as ParallelAlexUniverse;
 use parallelize::Universe as ParallelUniverse;
 use optimized_alg::Universe as OptimizedUniverse;
 use wasm_game_of_life::{Universe as NaiveUniverse, Cell as NaiveCell};
 use wasm_game_of_life::sparse_matrix::Universe as SparseUniverse;
 use track_alive_cells::Universe as TrackAliveCellsUniverse;
+
+
 use std::time::Instant;
 use rand::Rng;
 use sysinfo::{System, SystemExt};
@@ -112,9 +117,17 @@ fn main() {
 
     // ===== Alex's Parallelized Version =====
     println!("\nParallelized Game of Life:");
-    let mut Alex_parallel_universe = ParallelAlexUniverse::new_with_matrix(width, height, flat_matrix);
+    let mut Alex_parallel_universe = ParallelAlexUniverse::new_with_matrix(width, height, flat_matrix.clone());
     let start_parallel_Alex = Instant::now();
     Alex_parallel_universe.run_iterations(10);
     let parallel_time_Alex = start_parallel_Alex.elapsed().as_millis();
     println!("Alex parallelized Approach: {} ms", parallel_time_Alex);
+
+    // ===== Hashlife Implementation =====
+    println!("\nHashlife Game of Life Algorithm:");
+    let mut hashlife_universe = HashlifeUniverse::new_with_matrix(width, height, flat_matrix.clone());
+    let start_hashlife = Instant::now();
+    hashlife_universe.run_iterations(10);
+    let hashlife_time = start_hashlife.elapsed().as_millis();
+    println!("Hashlife Approach: {} ms", hashlife_time);    
 }
