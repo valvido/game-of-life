@@ -1,4 +1,4 @@
-#[allow(dead_code)]
+#![allow(dead_code)]
 //this version does not update the whole matrix (grid) but only keeps track of the part of the grid 
 //which is alive and active
 

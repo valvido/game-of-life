@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use wasm_bindgen::prelude::*;
 use std::collections::{HashMap, HashSet};
 extern crate sysinfo;
@@ -21,13 +22,13 @@ pub enum Cell {
 
 #[wasm_bindgen]
 pub struct Universe {
-    width: u32,
-    height: u32,
-    live_cells: HashSet<(u32, u32)>,
+    width: usize,
+    height: usize,
+    live_cells: HashSet<(usize, usize)>,
 }
 
 impl Universe {
-    fn get_neighbors(&self, row: u32, col: u32) -> Vec<(u32, u32)> {
+    fn get_neighbors(&self, row: usize, col: usize) -> Vec<(usize, usize)> {
         let deltas = [-1, 0, 1];
         let mut neighbors = Vec::new();
 
@@ -36,12 +37,11 @@ impl Universe {
                 if delta_row == 0 && delta_col == 0 {
                     continue;
                 }
-                let neighbor_row = ((row as i32 + delta_row + self.height as i32) % self.height as i32) as u32;
-                let neighbor_col = ((col as i32 + delta_col + self.width as i32) % self.width as i32) as u32;
+                let neighbor_row = ((row as i32 + delta_row + self.height as i32) % self.height as i32) as usize;
+                let neighbor_col = ((col as i32 + delta_col + self.width as i32) % self.width as i32) as usize;
                 neighbors.push((neighbor_row, neighbor_col));
             }
         }
-
         neighbors
     }
 }
@@ -49,7 +49,7 @@ impl Universe {
 #[wasm_bindgen]
 impl Universe {
     pub fn tick(&mut self) {
-        let mut neighbor_counts: HashMap<(u32, u32), u32> = HashMap::new();
+        let mut neighbor_counts: HashMap<(usize, usize), usize> = HashMap::new();
 
         for &(row, col) in &self.live_cells {
             for neighbor in self.get_neighbors(row, col) {
@@ -68,13 +68,13 @@ impl Universe {
         self.live_cells = next_live_cells;
     }
 
-    pub fn new_with_matrix(width: u32, height: u32, flat_matrix: Vec<usize>) -> Universe {
+    pub fn new_with_matrix(width: usize, height: usize, flat_matrix: Vec<u8>) -> Universe {
         let mut live_cells = HashSet::new();
 
         for (index, &value) in flat_matrix.iter().enumerate() {
             if value == 1 {
-                let row = index as u32 / width;
-                let col = index as u32 % width;
+                let row = index / width;
+                let col = index % width;
                 live_cells.insert((row, col));
             }
         }

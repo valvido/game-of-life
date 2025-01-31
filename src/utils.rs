@@ -37,7 +37,7 @@ pub fn parse_header(line: &str) -> (usize, usize) {
 
 pub fn iter_coords<F>(boardrow: &str, dims: (usize, usize), func: &mut F)
 where
-    F: FnMut(usize)
+    F: FnMut(u8)
 {
     let mut prefixnum: i64 = 0;
     let mut prefixset = false;
@@ -117,7 +117,7 @@ where
 }
 
 /// Read .rle file and return problem parameters
-pub fn init_from_file(file_path: &str, width: usize) -> Vec<usize> {
+pub fn init_from_file(file_path: &str, width: usize) -> Vec<u8> {
     // Reads the file and saves as a string
     let f = BufReader::new(File::open(file_path).unwrap());
     let mut line_iter = f.lines();
@@ -140,7 +140,7 @@ pub fn init_from_file(file_path: &str, width: usize) -> Vec<usize> {
         rle_str.push_str(&line.unwrap());
     }
 
-    let mut init_state: Vec<usize> = Vec::new();
+    let mut init_state: Vec<u8> = Vec::new();
     
     // Return initial grid as a N^2 sized vector
     iter_coords(rle_str.as_str(), dims, &mut |p| {

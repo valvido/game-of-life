@@ -2,13 +2,17 @@
 mod optimized_alg;
 mod track_alive_cells;
 mod parallelize;
-mod parallel_alex;
-use parallel_alex:: Universe as ParallelAlexUniverse;
+mod hashed_parallel;
+mod bitwise;
+
+use hashed_parallel::Universe as HashParallelUniverse;
 use parallelize::Universe as ParallelUniverse;
 use optimized_alg::Universe as OptimizedUniverse;
 use wasm_game_of_life::{Universe as NaiveUniverse, Cell as NaiveCell};
 use wasm_game_of_life::sparse_matrix::Universe as SparseUniverse;
 use track_alive_cells::Universe as TrackAliveCellsUniverse;
+use bitwise::Universe as BWUniverse;
+
 use std::time::Instant;
 use rand::Rng;
 use sysinfo::{System, SystemExt};
@@ -20,20 +24,21 @@ use utils::*;
 
 fn main() {
     // File name of the grid
-    let file_name = "blom.rle";
+    let file_name = "52513m.rle";
     let file_path = format!("./grids/{}", file_name);
 
     // Number of iterations:
     let n_iter: usize = 100;
 
     // Size of the universe:
-    let width: u32 = 1000;
+    let scale = 2;
+    let width = usize::pow(2, 9 + scale);
 
     // Read RLE file and initialize the flat matrix
-    let flat_matrix: Vec<u8> = init_from_file(&file_path, width as usize).into_iter().map(|x| x as u8).collect();
+    let flat_matrix: Vec<u8> = init_from_file(&file_path, width);
 
     // Convert flat matrix to a 2D representation
-    let initial_state = vec_to_matrix(&flat_matrix, width as usize);
+    let initial_state = vec_to_matrix(&flat_matrix, width);
 
     // Convert initial_state to a list of live cells (for Track-Alive-Cells & Parallelized version)
     let initial_live_cells: Vec<(usize, usize)> = initial_state
@@ -49,6 +54,9 @@ fn main() {
             })
         })
         .collect();
+
+    // Calculate initial number of live cells to avoid borrowing issues later:
+    let alive_count = initial_live_cells.len() ;
 
     // ===== Naive Implementation =====
     println!("Naive Game of Life:");
@@ -68,9 +76,11 @@ fn main() {
     println!("\nSparse Matrix Game of Life Algorithm:");
 
     // Convert `flat_matrix` from `Vec<u8>` to `Vec<usize>` before passing
-    let flat_matrix_usize: Vec<usize> = flat_matrix.iter().map(|&x| x as usize).collect();
+    // let flat_matrix_usize: Vec<usize> = flat_matrix.iter().map(|&x| x as usize).collect();
 
-    let mut sparse_universe = SparseUniverse::new_with_matrix(width, width, flat_matrix_usize);
+    let mut sparse_universe = SparseUniverse::new_with_matrix(width,
+         width, 
+         flat_matrix.clone());
     let start_sparse = Instant::now();
     sparse_universe.run_iterations(n_iter);
     let sparse_time = start_sparse.elapsed().as_millis();
@@ -79,7 +89,7 @@ fn main() {
     // ===== Optimized Version =====
     println!("\nOptimized Game of Life Algorithm:");
     let flat_initial_state: Vec<u8> = flat_matrix.clone();
-    let mut optimized_universe = OptimizedUniverse::new(width as usize, width as usize, flat_initial_state);
+    let mut optimized_universe = OptimizedUniverse::new(width, width, flat_initial_state);
     let start_optimized = Instant::now();
     optimized_universe.run_iterations(n_iter);
     let optimized_time = start_optimized.elapsed().as_millis();
@@ -88,8 +98,8 @@ fn main() {
     // ===== Track-Alive-Cells Implementation =====
     println!("\nTrack-Alive-Cells Algorithm:");
     let mut track_alive_cells_universe = TrackAliveCellsUniverse::new(
-        width as usize,
-        width as usize,
+        width,
+        width,
         initial_live_cells.clone(), // Clone here to preserve for parallel version
     );
 
@@ -101,8 +111,8 @@ fn main() {
     // ===== Parallelized Version =====
     println!("\nParallelized Game of Life:");
     let mut parallel_universe = ParallelUniverse::new(
-        width as usize,
-        width as usize,
+        width,
+        width,
         initial_live_cells, // Use original since it was cloned before
     );
 
@@ -113,9 +123,17 @@ fn main() {
 
     // ===== Alex's Parallelized Version =====
     println!("\nParallelized Game of Life:");
-    let mut Alex_parallel_universe = ParallelAlexUniverse::new_with_matrix(width, width, flat_matrix);
-    let start_parallel_Alex = Instant::now();
-    Alex_parallel_universe.run_iterations(n_iter);
-    let parallel_time_Alex = start_parallel_Alex.elapsed().as_millis();
-    println!("Alex parallelized Approach: {} ms", parallel_time_Alex);
+    let mut hashed_parallel_universe = HashParallelUniverse::new_with_matrix(width, width, flat_matrix);
+    let start_hp = Instant::now();
+    hashed_parallel_universe.run_iterations(n_iter);
+    let total_time_hp = start_hp.elapsed().as_millis();
+    println!("Hashed parallel Approach: {} ms", total_time_hp);
+
+    // ===== Bitwise Implementation =====
+    println!("\nBitwise Game of Life:");
+    let mut bitwise_universe = BWUniverse::new(width, width, alive_count);
+    let start_bitwise = Instant::now();
+    bitwise_universe.run_iterations(10);
+    let bitwise_time = start_bitwise.elapsed().as_millis();
+    println!("Bitwise Approach: {} ms", bitwise_time);
 }

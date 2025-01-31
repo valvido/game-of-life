@@ -40,17 +40,17 @@ pub enum Cell {
 
 #[wasm_bindgen]
 pub struct Universe {
-    width: u32,
-    height: u32,
+    width: usize,
+    height: usize,
     cells: Vec<Cell>, // Private field
 }
 
 impl Universe {
-    fn get_index(&self, row: u32, column: u32) -> usize {
-        (row * self.width + column) as usize
+    fn get_index(&self, row: usize, column: usize) -> usize {
+        row * self.width + column 
     }
 
-    fn live_neighbor_count(&self, row: u32, column: u32) -> u8 {
+    fn live_neighbor_count(&self, row: usize, column: usize) -> usize {
         let mut count = 0;
         for delta_row in [self.height - 1, 0, 1].iter().cloned() {
             for delta_col in [self.width - 1, 0, 1].iter().cloned() {
@@ -61,7 +61,7 @@ impl Universe {
                 let neighbor_row = (row + delta_row) % self.height;
                 let neighbor_col = (column + delta_col) % self.width;
                 let idx = self.get_index(neighbor_row, neighbor_col);
-                count += self.cells[idx] as u8;
+                count += self.cells[idx] as usize;
             }
         }
         count
@@ -94,8 +94,8 @@ impl Universe {
         self.cells = next;
     }
 
-    pub fn new_with_cells(width: u32, height: u32, cells: Vec<Cell>) -> Universe {
-        assert_eq!(cells.len(), (width * height) as usize);
+    pub fn new_with_cells(width: usize, height: usize, cells: Vec<Cell>) -> Universe {
+        assert_eq!(cells.len(), width * height);
         Universe { width, height, cells }
     }
 
@@ -124,11 +124,11 @@ impl Universe {
     }
 
     // Additional method to expose width and height if needed
-    pub fn get_width(&self) -> u32 {
+    pub fn get_width(&self) -> usize {
         self.width
     }
 
-    pub fn get_height(&self) -> u32 {
+    pub fn get_height(&self) -> usize {
         self.height
     }
 }
@@ -137,12 +137,12 @@ use std::fmt;
 
 impl fmt::Display for Universe {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for line in self.cells.as_slice().chunks(self.width as usize) {
+        for line in self.cells.as_slice().chunks(self.width) {
             for &cell in line {
                 let symbol = if cell == Cell::Dead { "☁ " } else { "🦄" };
                 write!(f, "{}", symbol)?;
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
 
         Ok(())
