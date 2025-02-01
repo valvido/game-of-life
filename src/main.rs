@@ -99,6 +99,7 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
     
     let mut iteration_times = Vec::new();
     let mut memory_use = Vec::new();
+    memory_use.push(get_memory_usage()/1024);
     let global_start = Instant::now(); 
 
     match universe {
@@ -164,7 +165,7 @@ fn write_results_to_csv(results: &Vec<(String, u128, Vec<u128>, Vec<u64>)>, file
         &format!(" no. Iterations: {}", iterations.to_string()),  // Iterations
     ])?;
     // Write the headers
-    wtr.write_record(&["Name", "Global Time (ms)", "Times per 10 Iterations", "Memory Usage (MB)"])?;
+    wtr.write_record(&["Name", "Global Time (ms)", "Times per 10 Iterations", "Memory Usage before and after (MB)"])?;
 
     for result in results {
         let name = &result.0;
@@ -200,7 +201,7 @@ fn main() {
     let grid_size = (flat_matrix.len() as f64).sqrt().floor() as usize;
     let width: usize = grid_size.try_into().unwrap();
     let height: usize = grid_size.try_into().unwrap();
-    let iterations: usize = 1000;
+    let iterations: usize = 100;
 
 
     
@@ -241,7 +242,7 @@ fn main() {
         println!();  // Empty line after each result
     }
 
-    let output_file_name = format!("{}_performance_results.csv", file_name);  // Use the existing `file_name` variable
+    let output_file_name = format!("{}_{}_results.csv", file_name, iterations);  // Use the existing `file_name` variable
     if let Err(e) = write_results_to_csv(&results, &output_file_name, (width, height), iterations, file_name) {
         eprintln!("Error writing to CSV file: {}", e);
     }
