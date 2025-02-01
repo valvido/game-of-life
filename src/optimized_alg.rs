@@ -1,4 +1,3 @@
-
 #![allow(dead_code)]
 
 //this is still a sequential algorithm but it has some optimizations for cache eficiency

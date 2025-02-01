@@ -2,15 +2,19 @@
 mod optimized_alg;
 mod track_alive_cells;
 mod parallelize;
-mod parallel_alex;
 mod traits;  // This declares the traits module
+mod hashed_parallel;
+mod bitwise;
+
 use crate::traits::TickUniv;
-use parallel_alex:: Universe as ParallelAlexUniverse;
+use hashed_parallel::Universe as HashParallelUniverse;
 use parallelize::Universe as ParallelUniverse;
 use optimized_alg::Universe as OptimizedUniverse;
 use wasm_game_of_life::{Universe as NaiveUniverse, Cell as NaiveCell};
 use wasm_game_of_life::sparse_matrix::Universe as SparseUniverse;
 use track_alive_cells::Universe as TrackAliveCellsUniverse;
+use bitwise::Universe as BWUniverse;
+
 use std::time::Instant;
 use rand::Rng;
 use sysinfo::{System, SystemExt};
@@ -31,9 +35,8 @@ enum AnyUniverse {
     Optimized(OptimizedUniverse),
     TrackAliveCells(TrackAliveCellsUniverse),
     Parallel(ParallelUniverse),
-    ParallelAlex(ParallelAlexUniverse),
+    HashParallel(HashParallelUniverse),
 }
-
 
 fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
     NaiveUniverse,
@@ -41,7 +44,7 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
     OptimizedUniverse,
     TrackAliveCellsUniverse,
     ParallelUniverse,
-    ParallelAlexUniverse,
+    HashParallelUniverse,
 ) {
       // NAIVE
     // Convert flat matrix to 2D representation
@@ -73,6 +76,7 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
             })
         })
         .collect();
+
     let track_alive_cells_universe = TrackAliveCellsUniverse::new(
         width,
         height,
@@ -83,9 +87,9 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
     let parallel_universe = ParallelUniverse::new(width, height, initial_trackparl_cells.clone());
 
     //PARALLEL ALEX
-    let alex_parallel_universe = ParallelAlexUniverse::new_with_matrix(width, height, flat_matrix.clone());
+    let hashed_parallel_universe = HashParallelUniverse::new_with_matrix(width, height, flat_matrix.clone());
 
-    (naive_universe, sparse_universe, optimized_universe, track_alive_cells_universe, parallel_universe, alex_parallel_universe)
+    (naive_universe, sparse_universe, optimized_universe, track_alive_cells_universe, parallel_universe, hashed_parallel_universe)
 }
 
 
@@ -187,38 +191,30 @@ fn write_results_to_csv(results: &Vec<(String, u128, Vec<u128>, Vec<u64>)>, file
 
 
 
-
-
-
-
-
-
 fn main() {
     // File name of the grid
-    let file_name = "blom.rle";
+    let file_name = "52513m.rle";
     let file_path = format!("./grids/{}", file_name);
+    // Number of iterations:
+    let iterations: usize = 100;
 
+    // Size of the universe:
+    let scale = 2;
+    let width = usize::pow(2, 9 + scale);
 
     // Read RLE file and initialize the flat matrix
-    let flat_matrix: Vec<u8> = init_from_file(&file_path).into_iter().map(|x| x as u8).collect();
-
-    let grid_size = (flat_matrix.len() as f64).sqrt().floor() as usize;
-    let width: usize = grid_size.try_into().unwrap();
-    let height: usize = grid_size.try_into().unwrap();
-    let iterations: usize = 500;
-
-
-    
+    let flat_matrix: Vec<u8> = init_from_file(&file_path, width).into_iter().map(|x| x as u8).collect();
 
     // --- Initialization ---
-    let ( naive_universe,  sparse_universe,  optimized_universe,  track_alive_cells_universe,  parallel_universe, alexparl_universe) = initialize_all(flat_matrix, width, height);
+    let ( naive_universe,  sparse_universe,  optimized_universe,  
+        track_alive_cells_universe,  parallel_universe, hashed_parallel_universe) = initialize_all(flat_matrix, width, width);
     let mut initial_universes: Vec<AnyUniverse> = vec![
         AnyUniverse::Naive(naive_universe),
         AnyUniverse::Sparse(sparse_universe),
         AnyUniverse::Optimized(optimized_universe),
         AnyUniverse::TrackAliveCells(track_alive_cells_universe),
         AnyUniverse::Parallel(parallel_universe),
-        AnyUniverse::ParallelAlex(alexparl_universe),
+        AnyUniverse::HashParallelUniverse(hashed_parallel_universe),
     ];
     let universe_names = vec![
         "Naive", 
@@ -226,7 +222,7 @@ fn main() {
         "Optimized", 
         "TrackAliveCells", 
         "Parallel", 
-        "ParallelAlex"
+        "HashParallel"
     ];
 
     // --- Result Printing ---
@@ -247,8 +243,7 @@ fn main() {
     }
 
     let output_file_name = format!("{}_{}_results.csv", file_name, iterations);  // Use the existing `file_name` variable
-    if let Err(e) = write_results_to_csv(&results, &output_file_name, (width, height), iterations, file_name) {
+    if let Err(e) = write_results_to_csv(&results, &output_file_name, (width, width), iterations, file_name) {
         eprintln!("Error writing to CSV file: {}", e);
     }
-    
 }
