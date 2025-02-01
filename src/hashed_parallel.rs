@@ -65,7 +65,7 @@ impl Universe {
 // generation calculation
 #[wasm_bindgen]
 impl Universe {
-    pub fn next_gen(&mut self) {
+    pub fn tick(&mut self) {
         let live_cells = &self.live_cells;
 
          // Count neighbors using parallel iteration
@@ -151,7 +151,7 @@ impl Universe {
         /// Runs the game for the specified number of iterations (ticks).
         pub fn run_iterations(&mut self, iterations: usize) {
             for _ in 0..iterations {
-                self.next_gen();
+                self.tick();
             }
         }
 

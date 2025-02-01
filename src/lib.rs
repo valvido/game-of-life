@@ -102,11 +102,9 @@ impl Universe{
     pub fn run_iterations(&mut self, iterations: usize) {
         print_memory_usage("Before Running Iterations");
 
-        for i in 0..iterations {
+        for _ in 0..iterations {
             self.tick();
-
         }
-
     }
 
     pub fn render(&self) -> String {

@@ -25,7 +25,6 @@ use std::io::{self, Write};
 use csv::Writer;
 use std::fs;
 
-
 mod utils;
 use utils::*;
 
@@ -113,7 +112,7 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
         AnyUniverse::Optimized(u) => u.run_iterations(iterations),
         AnyUniverse::TrackAliveCells(u) => u.run_iterations(iterations),
         AnyUniverse::Parallel(u) => u.run_iterations(iterations),
-        AnyUniverse::ParallelAlex(u) => u.run_iterations(iterations),
+        AnyUniverse::HashParallel(u) => u.run_iterations(iterations),
     }
     let global_time = global_start.elapsed().as_millis(); // Total elapsed time
 
@@ -129,7 +128,7 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
                 AnyUniverse::Optimized(u) => u.tick(),
                 AnyUniverse::TrackAliveCells(u) => u.tick(),
                 AnyUniverse::Parallel(u) => u.tick(),
-                AnyUniverse::ParallelAlex(u) => u.tick(),
+                AnyUniverse::HashParallel(u) => u.tick(),
             }
             //memory_use.push(get_memory_usage()/1024);
         } else if i % 10 == 9 {
@@ -139,7 +138,7 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
                 AnyUniverse::Optimized(u) => u.tick(),
                 AnyUniverse::TrackAliveCells(u) => u.tick(),
                 AnyUniverse::Parallel(u) => u.tick(),
-                AnyUniverse::ParallelAlex(u) => u.tick(),
+                AnyUniverse::HashParallel(u) => u.tick(),
             }
             let iter_time = iter_start.elapsed().as_millis();
             iteration_times.push(iter_time);
@@ -150,7 +149,7 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
                 AnyUniverse::Optimized(u) => u.tick(),
                 AnyUniverse::TrackAliveCells(u) => u.tick(),
                 AnyUniverse::Parallel(u) => u.tick(),
-                AnyUniverse::ParallelAlex(u) => u.tick(),
+                AnyUniverse::HashParallel(u) => u.tick(),
             }
         }
     }
@@ -214,7 +213,7 @@ fn main() {
         AnyUniverse::Optimized(optimized_universe),
         AnyUniverse::TrackAliveCells(track_alive_cells_universe),
         AnyUniverse::Parallel(parallel_universe),
-        AnyUniverse::HashParallelUniverse(hashed_parallel_universe),
+        AnyUniverse::HashParallel(hashed_parallel_universe),
     ];
     let universe_names = vec![
         "Naive", 

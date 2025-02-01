@@ -89,8 +89,7 @@ impl Universe {
 
     pub fn run_iterations(&mut self, iterations: usize) {
 
-
-        for i in 0..iterations {
+        for _ in 0..iterations {
             self.tick();
         }
     }
