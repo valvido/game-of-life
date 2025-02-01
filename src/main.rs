@@ -19,6 +19,7 @@ use std::convert::TryInto;
 use std::fs::File;
 use std::io::{self, Write};
 use csv::Writer;
+use std::fs;
 
 
 mod utils;
@@ -155,7 +156,10 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
 }
 
 fn write_results_to_csv(results: &Vec<(String, u128, Vec<u128>, Vec<u64>)>, filename: &str, grid_size: (usize, usize), iterations: usize, file_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let mut wtr = Writer::from_path(filename)?;
+    let dir_name = "results_csv";
+    fs::create_dir_all(dir_name)?;
+    let file_path = format!("{}/{}", dir_name, filename);
+    let mut wtr = Writer::from_path(file_path)?;
 
     // Write metadata as the first row
     wtr.write_record(&[
@@ -201,7 +205,7 @@ fn main() {
     let grid_size = (flat_matrix.len() as f64).sqrt().floor() as usize;
     let width: usize = grid_size.try_into().unwrap();
     let height: usize = grid_size.try_into().unwrap();
-    let iterations: usize = 100;
+    let iterations: usize = 500;
 
 
     
