@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![allow(dead_code)]
 use wasm_bindgen::prelude::*;
 use std::collections::{HashMap, HashSet};
 extern crate sysinfo;

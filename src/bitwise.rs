@@ -29,7 +29,7 @@ pub struct Universe {
 impl Universe {
     fn get_index(&self, row: usize, column: usize) -> (usize, u64) {
         let bit_index = row * self.width + column;
-        let word_index = (bit_index / 64) as usize; // Index in the vector
+        let word_index = bit_index / 64; // Index in the vector
         let bit_position = bit_index % 64;         // Position in the u64
         (word_index, 1 << bit_position)
     }
@@ -102,7 +102,7 @@ impl Universe {
     }
 
     pub fn new(width: usize, height: usize, alive_count: usize) -> Universe {
-        let num_words = ((width * height) as usize + 63) / 64; // Number of u64 words needed
+        let num_words = ((width * height) + 63) / 64; // Number of u64 words needed
         let mut universe = Universe {
             width,
             height,

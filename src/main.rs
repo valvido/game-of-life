@@ -35,6 +35,7 @@ enum AnyUniverse {
     TrackAliveCells(TrackAliveCellsUniverse),
     Parallel(ParallelUniverse),
     HashParallel(HashParallelUniverse),
+    Bitwise(BWUniverse)
 }
 
 fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
@@ -44,6 +45,7 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
     TrackAliveCellsUniverse,
     ParallelUniverse,
     HashParallelUniverse,
+    BWUniverse
 ) {
       // NAIVE
     // Convert flat matrix to 2D representation
@@ -75,6 +77,7 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
             })
         })
         .collect();
+    let alive_count = initial_trackparl_cells.len();
 
     let track_alive_cells_universe = TrackAliveCellsUniverse::new(
         width,
@@ -85,10 +88,13 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
     // PARALLEL
     let parallel_universe = ParallelUniverse::new(width, height, initial_trackparl_cells.clone());
 
-    //PARALLEL ALEX
+    //PARALLEL WITH HASHING
     let hashed_parallel_universe = HashParallelUniverse::new_with_matrix(width, height, flat_matrix.clone());
 
-    (naive_universe, sparse_universe, optimized_universe, track_alive_cells_universe, parallel_universe, hashed_parallel_universe)
+    // BITWISE 
+    let bitwise_universe = BWUniverse::new(width, height, alive_count);
+
+    (naive_universe, sparse_universe, optimized_universe, track_alive_cells_universe, parallel_universe, hashed_parallel_universe, bitwise_universe)
 }
 
 
@@ -104,7 +110,8 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
     let mut iteration_times = Vec::new();
     let mut memory_use = Vec::new();
     memory_use.push(get_memory_usage()/1024);
-    let global_start = Instant::now(); 
+
+    /* let global_start = Instant::now(); 
 
     match universe {
         AnyUniverse::Naive(u) => u.run_iterations(iterations),
@@ -113,11 +120,14 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
         AnyUniverse::TrackAliveCells(u) => u.run_iterations(iterations),
         AnyUniverse::Parallel(u) => u.run_iterations(iterations),
         AnyUniverse::HashParallel(u) => u.run_iterations(iterations),
+        AnyUniverse::Bitwise(u) => u.run_iterations(iterations),
     }
     let global_time = global_start.elapsed().as_millis(); // Total elapsed time
-
+ */
+    let global_start = Instant::now();
     let mut iter_start = Instant::now();
-    //measuring every 10 iterations
+
+    // measuring every 10 iterations
     for i in 0..iterations {
         if i % 10 == 0 {
             iter_start = Instant::now();
@@ -129,8 +139,10 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
                 AnyUniverse::TrackAliveCells(u) => u.tick(),
                 AnyUniverse::Parallel(u) => u.tick(),
                 AnyUniverse::HashParallel(u) => u.tick(),
+                AnyUniverse::Bitwise(u) => u.tick(),
             }
             //memory_use.push(get_memory_usage()/1024);
+
         } else if i % 10 == 9 {
             match universe {
                 AnyUniverse::Naive(u) => u.tick(),
@@ -139,6 +151,8 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
                 AnyUniverse::TrackAliveCells(u) => u.tick(),
                 AnyUniverse::Parallel(u) => u.tick(),
                 AnyUniverse::HashParallel(u) => u.tick(),
+                AnyUniverse::Bitwise(u) => u.tick(),
+                
             }
             let iter_time = iter_start.elapsed().as_millis();
             iteration_times.push(iter_time);
@@ -150,9 +164,11 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
                 AnyUniverse::TrackAliveCells(u) => u.tick(),
                 AnyUniverse::Parallel(u) => u.tick(),
                 AnyUniverse::HashParallel(u) => u.tick(),
+                AnyUniverse::Bitwise(u) => u.tick(),
             }
         }
     }
+    let global_time = global_start.elapsed().as_millis(); // Total elapsed time
     memory_use.push(get_memory_usage()/1024);
     
     (global_time, iteration_times, memory_use)
@@ -165,14 +181,14 @@ fn write_results_to_csv(results: &Vec<(String, u128, Vec<u128>, Vec<u64>)>, file
     let mut wtr = Writer::from_path(file_path)?;
 
     // Write metadata as the first row
-    wtr.write_record(&[
+    wtr.write_record([
         &format!("File Name: {}", file_name),  // This is the file name of the input file (e.g., "justyna.rle")  // Grid Size in width x height format
-        &format!(" Width: {}", grid_size.0.to_string()),  // Width
-        &format!(" Height: {}", grid_size.1.to_string()),  // Height
-        &format!(" no. Iterations: {}", iterations.to_string()),  // Iterations
+        &format!(" Width: {}", grid_size.0),  // Width
+        &format!(" Height: {}", grid_size.1),  // Height
+        &format!(" no. Iterations: {}", iterations),  // Iterations
     ])?;
     // Write the headers
-    wtr.write_record(&["Name", "Global Time (ms)", "Times per 10 Iterations", "Memory Usage before and after (MB)"])?;
+    wtr.write_record(["Name", "Global Time (ms)", "Times per 10 Iterations", "Memory Usage before and after (MB)"])?;
 
     for result in results {
         let name = &result.0;
@@ -181,7 +197,7 @@ fn write_results_to_csv(results: &Vec<(String, u128, Vec<u128>, Vec<u64>)>, file
         let memory_use = format!("{:?}", result.3);
 
         // Write each row in the CSV
-        wtr.write_record(&[name, &global_time.to_string(), &iteration_times, &memory_use.to_string()])?;
+        wtr.write_record([name, &global_time.to_string(), &iteration_times, &memory_use.to_string()])?;
     }
 
     wtr.flush()?;
@@ -189,10 +205,9 @@ fn write_results_to_csv(results: &Vec<(String, u128, Vec<u128>, Vec<u64>)>, file
 }
 
 
-
 fn main() {
     // File name of the grid
-    let file_name = "52513m.rle";
+    let file_name = "blom.rle";
     let file_path = format!("./grids/{}", file_name);
     // Number of iterations:
     let iterations: usize = 100;
@@ -202,11 +217,11 @@ fn main() {
     let width = usize::pow(2, 9 + scale);
 
     // Read RLE file and initialize the flat matrix
-    let flat_matrix: Vec<u8> = init_from_file(&file_path, width).into_iter().map(|x| x as u8).collect();
+    let flat_matrix: Vec<u8> = init_from_file(&file_path, width);
 
     // --- Initialization ---
-    let ( naive_universe,  sparse_universe,  optimized_universe,  
-        track_alive_cells_universe,  parallel_universe, hashed_parallel_universe) = initialize_all(flat_matrix, width, width);
+    let (naive_universe,  sparse_universe,  optimized_universe, track_alive_cells_universe, 
+        parallel_universe, hashed_parallel_universe, bitwise_universe) = initialize_all(flat_matrix, width, width);
     let mut initial_universes: Vec<AnyUniverse> = vec![
         AnyUniverse::Naive(naive_universe),
         AnyUniverse::Sparse(sparse_universe),
@@ -214,14 +229,16 @@ fn main() {
         AnyUniverse::TrackAliveCells(track_alive_cells_universe),
         AnyUniverse::Parallel(parallel_universe),
         AnyUniverse::HashParallel(hashed_parallel_universe),
+        AnyUniverse::Bitwise(bitwise_universe)
     ];
-    let universe_names = vec![
+    let universe_names = [
         "Naive", 
         "Sparse", 
         "Optimized", 
         "TrackAliveCells", 
         "Parallel", 
-        "HashParallel"
+        "HashParallel",
+        "Bitwise"
     ];
 
     // --- Result Printing ---
