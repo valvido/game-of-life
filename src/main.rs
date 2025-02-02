@@ -106,19 +106,26 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
         parallel_universe, hashed_parallel_universe, bitwise_universe, hashlife_universe)
 }
 
-/*
-  // ===== Hashlife Implementation =====
-    println!("\nHashlife Game of Life Algorithm:");
-    let start_hashlife = Instant::now();
-    hashlife_universe.run_iterations(10);
-    let hashlife_time = start_hashlife.elapsed().as_millis();
-    println!("Hashlife Approach: {} ms", hashlife_time);  */
-
-
 fn get_memory_usage() -> u64 {
     let mut sys = System::new_all();
     sys.refresh_memory();
     sys.used_memory() // Returns memory usage in KB
+}
+
+// Advances one time step for any possible impl
+fn global_ticker(universe:&mut AnyUniverse){
+
+    // Match on the enum and call the corresponding tick() method
+    match universe {
+        AnyUniverse::Naive(u) => u.tick(),
+        AnyUniverse::Sparse(u) => u.tick(),
+        AnyUniverse::Optimized(u) => u.tick(),
+        AnyUniverse::TrackAliveCells(u) => u.tick(),
+        AnyUniverse::Parallel(u) => u.tick(),
+        AnyUniverse::HashParallel(u) => u.tick(),
+        AnyUniverse::Bitwise(u) => u.tick(),
+        AnyUniverse::Hashlife(u) => u.tick(),
+    }
 }
 
 fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128, Vec<u128>, Vec<u64>) {
@@ -146,44 +153,20 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
     // measuring every 10 iterations
     for i in 0..iterations {
         if i % 10 == 0 {
+            // Start the clock
             iter_start = Instant::now();
-            // Match on the enum and call the corresponding tick() method
-            match universe {
-                AnyUniverse::Naive(u) => u.tick(),
-                AnyUniverse::Sparse(u) => u.tick(),
-                AnyUniverse::Optimized(u) => u.tick(),
-                AnyUniverse::TrackAliveCells(u) => u.tick(),
-                AnyUniverse::Parallel(u) => u.tick(),
-                AnyUniverse::HashParallel(u) => u.tick(),
-                AnyUniverse::Bitwise(u) => u.tick(),
-                AnyUniverse::Hashlife(u) => u.tick(),
-            }
+            global_ticker(universe);
             //memory_use.push(get_memory_usage()/1024);
 
         } else if i % 10 == 9 {
-            match universe {
-                AnyUniverse::Naive(u) => u.tick(),
-                AnyUniverse::Sparse(u) => u.tick(),
-                AnyUniverse::Optimized(u) => u.tick(),
-                AnyUniverse::TrackAliveCells(u) => u.tick(),
-                AnyUniverse::Parallel(u) => u.tick(),
-                AnyUniverse::HashParallel(u) => u.tick(),
-                AnyUniverse::Bitwise(u) => u.tick(),
-                AnyUniverse::Hashlife(u) => u.tick(),
-            }
+
+            global_ticker(universe);
+            // Record time per 10 interations
             let iter_time = iter_start.elapsed().as_millis();
             iteration_times.push(iter_time);
+            
         } else {
-            match universe {
-                AnyUniverse::Naive(u) => u.tick(),
-                AnyUniverse::Sparse(u) => u.tick(),
-                AnyUniverse::Optimized(u) => u.tick(),
-                AnyUniverse::TrackAliveCells(u) => u.tick(),
-                AnyUniverse::Parallel(u) => u.tick(),
-                AnyUniverse::HashParallel(u) => u.tick(),
-                AnyUniverse::Bitwise(u) => u.tick(),
-                AnyUniverse::Hashlife(u) => u.tick(),
-            }
+            global_ticker(universe);
         }
     }
     let global_time = global_start.elapsed().as_millis(); // Total elapsed time
@@ -273,7 +256,7 @@ fn main() {
         results.push((name.to_string(), global_time, iteration_times.clone(), memory_use.clone()));
 
         // Print results
-        println!("{}: \nGlobal time: {} ms, Time for 5 iterations: {:?}, Memory use in MB: {:?}", 
+        println!("{}: \nGlobal time: {} ms, Time per 10 iterations: {:?}, Memory use in MB: {:?}", 
                  name, global_time, iteration_times, memory_use);
         println!();  // Empty line after each result
     }
