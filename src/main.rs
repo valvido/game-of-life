@@ -77,7 +77,6 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
             })
         })
         .collect();
-    let alive_count = initial_trackparl_cells.len();
 
     let track_alive_cells_universe = TrackAliveCellsUniverse::new(
         width,
@@ -92,7 +91,7 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
     let hashed_parallel_universe = HashParallelUniverse::new_with_matrix(width, height, flat_matrix.clone());
 
     // BITWISE 
-    let bitwise_universe = BWUniverse::new(width, height, alive_count);
+    let bitwise_universe = BWUniverse::new(width, height, flat_matrix);
 
     (naive_universe, sparse_universe, optimized_universe, track_alive_cells_universe, parallel_universe, hashed_parallel_universe, bitwise_universe)
 }
