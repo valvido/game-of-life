@@ -39,7 +39,8 @@ enum AnyUniverse {
     TrackAliveCells(TrackAliveCellsUniverse),
     Parallel(ParallelUniverse),
     HashParallel(HashParallelUniverse),
-    Bitwise(BWUniverse)
+    Bitwise(BWUniverse),
+    Hashlife(HashlifeUniverse)
 }
 
 fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
@@ -49,7 +50,8 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
     TrackAliveCellsUniverse,
     ParallelUniverse,
     HashParallelUniverse,
-    BWUniverse
+    BWUniverse,
+    HashlifeUniverse
 ) {
       // NAIVE
     // Convert flat matrix to 2D representation
@@ -95,18 +97,22 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
     let hashed_parallel_universe = HashParallelUniverse::new_with_matrix(width, height, flat_matrix.clone());
 
     // BITWISE 
-    let bitwise_universe = BWUniverse::new(width, height, flat_matrix);
+    let bitwise_universe = BWUniverse::new(width, height, flat_matrix.clone());
 
-    (naive_universe, sparse_universe, optimized_universe, track_alive_cells_universe, parallel_universe, hashed_parallel_universe, bitwise_universe)
- /*
+    // HASHLIFE
+    let hashlife_universe = HashlifeUniverse::new_with_matrix(width, height, flat_matrix.clone());
+
+    (naive_universe, sparse_universe, optimized_universe, track_alive_cells_universe, 
+        parallel_universe, hashed_parallel_universe, bitwise_universe, hashlife_universe)
+}
+
+/*
   // ===== Hashlife Implementation =====
     println!("\nHashlife Game of Life Algorithm:");
-    let mut hashlife_universe = HashlifeUniverse::new_with_matrix(width, height, flat_matrix.clone());
     let start_hashlife = Instant::now();
     hashlife_universe.run_iterations(10);
     let hashlife_time = start_hashlife.elapsed().as_millis();
     println!("Hashlife Approach: {} ms", hashlife_time);  */
-}
 
 
 fn get_memory_usage() -> u64 {
@@ -150,6 +156,7 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
                 AnyUniverse::Parallel(u) => u.tick(),
                 AnyUniverse::HashParallel(u) => u.tick(),
                 AnyUniverse::Bitwise(u) => u.tick(),
+                AnyUniverse::Hashlife(u) => u.tick(),
             }
             //memory_use.push(get_memory_usage()/1024);
 
@@ -162,7 +169,7 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
                 AnyUniverse::Parallel(u) => u.tick(),
                 AnyUniverse::HashParallel(u) => u.tick(),
                 AnyUniverse::Bitwise(u) => u.tick(),
-                
+                AnyUniverse::Hashlife(u) => u.tick(),
             }
             let iter_time = iter_start.elapsed().as_millis();
             iteration_times.push(iter_time);
@@ -175,6 +182,7 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
                 AnyUniverse::Parallel(u) => u.tick(),
                 AnyUniverse::HashParallel(u) => u.tick(),
                 AnyUniverse::Bitwise(u) => u.tick(),
+                AnyUniverse::Hashlife(u) => u.tick(),
             }
         }
     }
@@ -230,8 +238,8 @@ fn main() {
     let flat_matrix: Vec<u8> = init_from_file(&file_path, width);
 
     // --- Initialization ---
-    let (naive_universe,  sparse_universe,  optimized_universe, track_alive_cells_universe, 
-        parallel_universe, hashed_parallel_universe, bitwise_universe) = initialize_all(flat_matrix, width, width);
+    let (naive_universe,  sparse_universe,  optimized_universe, track_alive_cells_universe, parallel_universe, 
+        hashed_parallel_universe, bitwise_universe, hashlife_universe) = initialize_all(flat_matrix, width, width);
     let mut initial_universes: Vec<AnyUniverse> = vec![
         AnyUniverse::Naive(naive_universe),
         AnyUniverse::Sparse(sparse_universe),
@@ -239,7 +247,8 @@ fn main() {
         AnyUniverse::TrackAliveCells(track_alive_cells_universe),
         AnyUniverse::Parallel(parallel_universe),
         AnyUniverse::HashParallel(hashed_parallel_universe),
-        AnyUniverse::Bitwise(bitwise_universe)
+        AnyUniverse::Bitwise(bitwise_universe),
+        AnyUniverse::Hashlife(hashlife_universe)
     ];
     let universe_names = [
         "Naive", 
@@ -248,7 +257,8 @@ fn main() {
         "TrackAliveCells", 
         "Parallel", 
         "HashParallel",
-        "Bitwise"
+        "Bitwise",
+        "Hashlife"
     ];
 
     // --- Result Printing ---
