@@ -8,6 +8,10 @@ mod bitwise;
 
 use crate::traits::TickUniv;
 use hashed_parallel::Universe as HashParallelUniverse;
+
+mod hashlife;  // New Hashlife module
+
+use hashlife::Universe as HashlifeUniverse;  // New import for Hashlife
 use parallelize::Universe as ParallelUniverse;
 use optimized_alg::Universe as OptimizedUniverse;
 use wasm_game_of_life::{Universe as NaiveUniverse, Cell as NaiveCell};
@@ -94,8 +98,15 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
     let bitwise_universe = BWUniverse::new(width, height, flat_matrix);
 
     (naive_universe, sparse_universe, optimized_universe, track_alive_cells_universe, parallel_universe, hashed_parallel_universe, bitwise_universe)
+ /*
+  // ===== Hashlife Implementation =====
+    println!("\nHashlife Game of Life Algorithm:");
+    let mut hashlife_universe = HashlifeUniverse::new_with_matrix(width, height, flat_matrix.clone());
+    let start_hashlife = Instant::now();
+    hashlife_universe.run_iterations(10);
+    let hashlife_time = start_hashlife.elapsed().as_millis();
+    println!("Hashlife Approach: {} ms", hashlife_time);  */
 }
-
 
 
 fn get_memory_usage() -> u64 {
