@@ -175,7 +175,13 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
     (global_time, iteration_times, memory_use)
 }
 
-fn write_results_to_csv(results: &Vec<(String, u128, Vec<u128>, Vec<u64>)>, filename: &str, grid_size: (usize, usize), iterations: usize, file_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+
+fn write_results_to_csv(
+    all_results: &Vec<Vec<(usize, String, u128, Vec<u128>, Vec<u64>)>>, 
+    filename: &str,  
+    iterations: usize, 
+    file_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+
     let dir_name = "results_csv";
     fs::create_dir_all(dir_name)?;
     let file_path = format!("{}/{}", dir_name, filename);
@@ -183,27 +189,32 @@ fn write_results_to_csv(results: &Vec<(String, u128, Vec<u128>, Vec<u64>)>, file
 
     // Write metadata as the first row
     wtr.write_record([
-        &format!("File Name: {}", file_name),  // This is the file name of the input file (e.g., "justyna.rle")  // Grid Size in width x height format
-        &format!(" Width: {}", grid_size.0),  // Width
-        &format!(" Height: {}", grid_size.1),  // Height
-        &format!(" no. Iterations: {}", iterations),  // Iterations
+        &format!("File Name: {}", file_name),  // This is the file name of the input file (e.g., "justyna.rle") 
+        //&format!(" Width: {}", grid_size.0),  // Width
+        //&format!(" Height: {}", grid_size.1),  // Height
+        &format!(" No. Iterations: {}", iterations), 
+        "", "", "" // Iterations
     ])?;
     // Write the headers
-    wtr.write_record(["Name", "Global Time (ms)", "Times per 10 Iterations", "Memory Usage before and after (MB)"])?;
+    wtr.write_record(["Grid size", "Name", "Global Time (ms)", "Times per 10 Iterations", "Memory Usage before and after (MB)"])?;
 
-    for result in results {
-        let name = &result.0;
-        let global_time = result.1;
-        let iteration_times = format!("{:?}", result.2);  // Convert Vec to string
-        let memory_use = format!("{:?}", result.3);
+    for results in all_results{
+        for version_result in results {
+            let grid_size = version_result.0;
+            let name = &version_result.1;
+            let global_time = version_result.2;
+            let iteration_times = format!("{:?}", version_result.3);  // Convert Vec to string
+            let memory_use = format!("{:?}", version_result.4);
 
-        // Write each row in the CSV
-        wtr.write_record([name, &global_time.to_string(), &iteration_times, &memory_use.to_string()])?;
+            // Write each row in the CSV
+            wtr.write_record([&grid_size.to_string(), name, &global_time.to_string(), &iteration_times, &memory_use.to_string()])?;
+        }
     }
 
     wtr.flush()?;
     Ok(())
 }
+    
 
 
 fn main() {
@@ -211,58 +222,71 @@ fn main() {
     let file_name = "blom.rle";
     let file_path = format!("./grids/{}", file_name);
     // Number of iterations:
-    let iterations: usize = 100;
+    let iterations: usize = 1000;
 
-    // Size of the universe:
-    let scale = 2;
-    let width = usize::pow(2, 9 + scale);
-
-    // Read RLE file and initialize the flat matrix
-    let flat_matrix: Vec<u8> = init_from_file(&file_path, width);
-
-    // --- Initialization ---
-    let (naive_universe,  sparse_universe,  optimized_universe, track_alive_cells_universe, parallel_universe, 
-        hashed_parallel_universe, bitwise_universe, hashlife_universe) = initialize_all(flat_matrix, width, width);
-    let mut initial_universes: Vec<AnyUniverse> = vec![
-        AnyUniverse::Naive(naive_universe),
-        AnyUniverse::Sparse(sparse_universe),
-        AnyUniverse::Optimized(optimized_universe),
-        AnyUniverse::TrackAliveCells(track_alive_cells_universe),
-        AnyUniverse::Parallel(parallel_universe),
-        AnyUniverse::HashParallel(hashed_parallel_universe),
-        AnyUniverse::Bitwise(bitwise_universe),
-        AnyUniverse::Hashlife(hashlife_universe)
-    ];
-    let universe_names = [
-        "Naive", 
-        "Sparse", 
-        "Optimized", 
-        "TrackAliveCells", 
-        "Parallel", 
-        "HashParallel",
-        "Bitwise",
-        "Hashlife"
-    ];
-
-    // --- Result Printing ---
-    let mut results = Vec::new();
-
-    for (i, univ) in initial_universes.iter_mut().enumerate() {
-        let (global_time, iteration_times, memory_use) = gather_iteration_info(univ, iterations);
-        let name = universe_names[i];  // Get the name based on index
+    
 
 
-        // Add the result to the results vector
-        results.push((name.to_string(), global_time, iteration_times.clone(), memory_use.clone()));
+    // ==== looping over grid sizes === 
+    let scales = vec![3];
+    let mut all_results = Vec::new();
 
-        // Print results
-        println!("{}: \nGlobal time: {} ms, Time per 10 iterations: {:?}, Memory use in MB: {:?}", 
-                 name, global_time, iteration_times, memory_use);
-        println!();  // Empty line after each result
+    for &scale in &scales {
+        // Size of the universe:
+        let width = usize::pow(2, 6 + scale);
+        // Read RLE file and initialize the flat matrix
+        let flat_matrix: Vec<u8> = init_from_file(&file_path, width);
+
+        // --- Initialization ---
+        let (naive_universe,  sparse_universe,  optimized_universe, track_alive_cells_universe, parallel_universe, 
+            hashed_parallel_universe, bitwise_universe, hashlife_universe) = initialize_all(flat_matrix, width, width);
+        let mut initial_universes: Vec<AnyUniverse> = vec![
+            AnyUniverse::Naive(naive_universe),
+            AnyUniverse::Sparse(sparse_universe),
+            AnyUniverse::Optimized(optimized_universe),
+            AnyUniverse::TrackAliveCells(track_alive_cells_universe),
+            AnyUniverse::Parallel(parallel_universe),
+            AnyUniverse::HashParallel(hashed_parallel_universe),
+            AnyUniverse::Bitwise(bitwise_universe),
+            AnyUniverse::Hashlife(hashlife_universe)
+        ];
+        let universe_names = [
+            "Naive", 
+            "Sparse", 
+            "Optimized", 
+            "TrackAliveCells", 
+            "Parallel", 
+            "HashParallel",
+            "Bitwise",
+            "Hashlife"
+        ];
+
+        // --- Result Printing ---
+        let mut version_results = Vec::new();
+
+        for (i, univ) in initial_universes.iter_mut().enumerate() {
+            let (global_time, iteration_times, memory_use) = gather_iteration_info(univ, iterations);
+            let name = universe_names[i];  // Get the name based on index
+
+
+            // Add the result to the results vector
+            version_results.push((width, name.to_string(), global_time, iteration_times.clone(), memory_use.clone()));
+
+            // Print results
+            println!("Done: {} {}: ", width, name);
+            //println!();  // Empty line after each result
+        }
+        all_results.push(version_results);
+        
     }
 
-    let output_file_name = format!("{}_{}_results.csv", file_name, iterations);  // Use the existing `file_name` variable
-    if let Err(e) = write_results_to_csv(&results, &output_file_name, (width, width), iterations, file_name) {
+    let output_file_name = format!("{}_{}_{:?}_results.csv", file_name, iterations, scales.last().unwrap());  // Use the existing `file_name` variable
+
+    if let Err(e) = write_results_to_csv(&all_results, &output_file_name, iterations, file_name) {
         eprintln!("Error writing to CSV file: {}", e);
     }
 }
+
+
+
+
