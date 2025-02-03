@@ -1,8 +1,12 @@
 #![allow(dead_code)]
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{BufRead, BufReader};
 use std::cmp;
 use std::cmp::Ordering;
+
+use sysinfo::{System, SystemExt};
+
+use csv::Writer;
 
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -37,7 +41,7 @@ pub fn parse_header(line: &str) -> (usize, usize) {
 
 pub fn iter_coords<F>(boardrow: &str, dims: (usize, usize), func: &mut F)
 where
-    F: FnMut(usize)
+    F: FnMut(u8)
 {
     let mut prefixnum: i64 = 0;
     let mut prefixset = false;
@@ -117,7 +121,7 @@ where
 }
 
 /// Read .rle file and return problem parameters
-pub fn init_from_file(file_path: &str) -> Vec<usize> {
+pub fn init_from_file(file_path: &str, width: usize) -> Vec<u8> {
     // Reads the file and saves as a string
     let f = BufReader::new(File::open(file_path).unwrap());
     let mut line_iter = f.lines();
@@ -140,26 +144,102 @@ pub fn init_from_file(file_path: &str) -> Vec<usize> {
         rle_str.push_str(&line.unwrap());
     }
 
-    let mut init_state: Vec<usize> = Vec::new();
+    let mut init_state: Vec<u8> = Vec::new();
     
     // Return initial grid as a N^2 sized vector
     iter_coords(rle_str.as_str(), dims, &mut |p| {
         init_state.push(p);
     });
 
-    init_state
+    // Embed initial state in the middle of NxN grid
+    let grid_size = (init_state.len() as f64).sqrt().floor() as usize;
+
+    let n_offset = calc_padding(width, grid_size);
+
+    let mut output_mat = vec![0; width*width];
+
+    // Copy the input matrix to the center of the result matrix
+    for i in 0..grid_size {
+        for j in 0..grid_size {
+            let source_idx = i * grid_size + j;
+            let target_idx = (i + n_offset) * width + (j + n_offset);
+            output_mat[target_idx] = init_state[source_idx];
+        }
+    }
+
+    output_mat
 }
 
-pub fn vec_to_matrix<T: Clone>(vec: &Vec<T>, n: usize) -> Vec<Vec<T>> {
+pub fn calc_padding(big_n: usize, grid_size: usize) -> usize{
+
+    assert!(big_n>grid_size, "Pattern {}sq is too big for grid of size {}", grid_size, big_n);
+
+    let diff = big_n-grid_size;
+
+    match diff%2 {
+        0 => diff/2,
+        1 => (diff+1)/2,
+        _ => panic!("INTEGER DIVISION BY 2 YIELDED SMTH WEIRDD!!!!")
+    }
+}
+
+pub fn vec_to_matrix<T: Clone>(vec: &[T], n: usize) -> Vec<Vec<T>> {
     vec.chunks(n)
         .map(|chunk| chunk.to_vec())
         .collect()
 }
 
-pub fn display(mat: &Vec<Vec<usize>>)
+pub fn display(mat: &Vec<Vec<u8>>)
 {
     for row in mat{
             println!("{:?}", row);
         }
     }
+
+pub fn get_memory_usage() -> u64 {
+    let mut sys = System::new_all();
+    sys.refresh_memory();
+    sys.used_memory() // Returns memory usage in KB
+}
+    
+pub fn write_results_to_csv(
+    all_results: &Vec<Vec<(usize, String, u128, Vec<u128>, Vec<u64>)>>, 
+    filename: &str,  
+    iterations: usize, 
+    file_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    
+    let dir_name = "results_csv";
+    fs::create_dir_all(dir_name)?;
+    let file_path = format!("{}/{}", dir_name, filename);
+    let mut wtr = Writer::from_path(file_path)?;
+    
+    // Write metadata as the first row
+    wtr.write_record([
+        &format!("File Name: {}", file_name),  // This is the file name of the input file (e.g., "justyna.rle") 
+        //&format!(" Width: {}", grid_size.0),  // Width
+        //&format!(" Height: {}", grid_size.1),  // Height
+        &format!(" No. Iterations: {}", iterations), 
+        "", "", "" ] // Iterations
+        )?;
+    // Write the headers
+    wtr.write_record(["Grid size", "Name", "Global Time (ms)", "Times per 10 Iterations", "Memory Usage before and after (MB)"])?;
+    
+    for results in all_results{
+        for version_result in results {
+            let grid_size = version_result.0;
+            let name = &version_result.1;
+            let global_time = version_result.2;
+            let iteration_times = format!("{:?}", version_result.3);  // Convert Vec to string
+            let memory_use = format!("{:?}", version_result.4);
+    
+            // Write each row in the CSV
+            wtr.write_record([&grid_size.to_string(), name, &global_time.to_string(), &iteration_times, &memory_use.to_string()])?;
+        }
+    }
+    
+    wtr.flush()?;
+    Ok(())
+}
+        
+    
 

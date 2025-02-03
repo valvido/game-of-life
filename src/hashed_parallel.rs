@@ -1,4 +1,4 @@
-
+#![allow(dead_code)]
 extern crate cfg_if;
 extern crate wasm_bindgen;
 
@@ -28,14 +28,14 @@ pub enum Cell {
 #[wasm_bindgen]
 #[derive(Clone, Debug)]
 pub struct Universe {
-    width: u32,
-    height: u32,
-    live_cells: HashSet<(u32, u32)>,
+    width: usize,
+    height: usize,
+    live_cells: HashSet<(usize, usize)>,
 }
 
 // helper functions
 impl Universe {
-    fn get_neighbors(&self, row: u32, col: u32) -> Vec<(u32, u32)> {
+    fn get_neighbors(&self, row: usize, col: usize) -> Vec<(usize,  usize)> {
         let deltas = [-1, 0, 1];
         let mut neighbors = Vec::new();
 
@@ -44,8 +44,8 @@ impl Universe {
                 if delta_row == 0 && delta_col == 0 {
                     continue;
                 }
-                let neighbor_row = (((self.height as i32) + (row as i32) + (delta_row as i32)) as u32) % (self.height);
-                let neighbor_col = (((self.width as i32)  + (col as i32) + (delta_col as i32)) as u32) % (self.width);
+                let neighbor_row = ((self.height as i32 + row as i32 + delta_row)  % self.height as i32) as usize ;
+                let neighbor_col = ((self.width as i32  + col as i32 + delta_col) % self.width as i32) as usize;
                 neighbors.push((neighbor_row, neighbor_col));
             }
         }
@@ -53,7 +53,7 @@ impl Universe {
         neighbors
     }
 
-    fn rules(is_alive: bool, neighbor_count: u32) -> bool {
+    fn rules(is_alive: bool, neighbor_count: usize) -> bool {
         match (is_alive, neighbor_count) {
             (true, 2) | (_, 3) => true, // Stays alive or comes to life
             _ => false, // Dies
@@ -65,22 +65,20 @@ impl Universe {
 // generation calculation
 #[wasm_bindgen]
 impl Universe {
-    pub fn next_gen(&mut self) {
+    pub fn tick(&mut self) {
         let live_cells = &self.live_cells;
 
          // Count neighbors using parallel iteration
-        let neighbor_counts: HashMap<(u32, u32), u32> = live_cells
+        let neighbor_counts: HashMap<(usize, usize), usize> = live_cells
             .par_iter()
             .flat_map(|&(row, col)| self.get_neighbors(row, col))
-            .fold(
-                || HashMap::new(),
+            .fold(HashMap::new,
                 |mut acc, cell| {
                     *acc.entry(cell).or_insert(0) += 1;
                     acc
                 },
             )
-            .reduce(
-                || HashMap::new(),
+            .reduce(HashMap::new,
                 |mut acc, map| {
                     for (k, v) in map {
                         *acc.entry(k).or_insert(0) += v;
@@ -88,11 +86,9 @@ impl Universe {
                     acc
                 },
             );
-
-
         
         // Compute next state in parallel
-        let next_state: HashSet<(u32, u32)> = neighbor_counts
+        let next_state: HashSet<(usize, usize)> = neighbor_counts
             .par_iter()
             .filter_map(|(&cell, &count)| {
                 let is_alive = live_cells.contains(&cell);
@@ -134,13 +130,13 @@ impl Universe {
 
     }
 
-    pub fn new_with_matrix(width: u32, height: u32, flat_matrix: Vec<u8>) -> Universe {
+    pub fn new_with_matrix(width: usize, height: usize, flat_matrix: Vec<u8>) -> Universe {
         let mut live_cells = HashSet::new();
 
         for (index, &value) in flat_matrix.iter().enumerate() {
             if value == 1 {
-                let row = index as u32 / width;
-                let col = index as u32 % width;
+                let row = index / width;
+                let col = index % width;
                 live_cells.insert((row, col));
             }
         }
@@ -155,7 +151,7 @@ impl Universe {
         /// Runs the game for the specified number of iterations (ticks).
         pub fn run_iterations(&mut self, iterations: usize) {
             for _ in 0..iterations {
-                self.next_gen();
+                self.tick();
             }
         }
 
@@ -164,9 +160,9 @@ impl Universe {
         for row in 0..self.height {
             for col in 0..self.width {
                 if self.live_cells.contains(&(row, col)) {
-                    buffer.push_str("🦄");
+                    buffer.push('■');
                 } else {
-                    buffer.push_str("☁ ");
+                    buffer.push('□');
                 }
             }
             buffer.push('\n');
