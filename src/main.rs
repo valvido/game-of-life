@@ -106,12 +106,6 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
         parallel_universe, hashed_parallel_universe, bitwise_universe, hashlife_universe)
 }
 
-fn get_memory_usage() -> u64 {
-    let mut sys = System::new_all();
-    sys.refresh_memory();
-    sys.used_memory() // Returns memory usage in KB
-}
-
 // Advances one time step for any possible impl
 fn global_ticker(universe:&mut AnyUniverse){
 
@@ -175,60 +169,16 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
     (global_time, iteration_times, memory_use)
 }
 
-
-fn write_results_to_csv(
-    all_results: &Vec<Vec<(usize, String, u128, Vec<u128>, Vec<u64>)>>, 
-    filename: &str,  
-    iterations: usize, 
-    file_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-
-    let dir_name = "results_csv";
-    fs::create_dir_all(dir_name)?;
-    let file_path = format!("{}/{}", dir_name, filename);
-    let mut wtr = Writer::from_path(file_path)?;
-
-    // Write metadata as the first row
-    wtr.write_record([
-        &format!("File Name: {}", file_name),  // This is the file name of the input file (e.g., "justyna.rle") 
-        //&format!(" Width: {}", grid_size.0),  // Width
-        //&format!(" Height: {}", grid_size.1),  // Height
-        &format!(" No. Iterations: {}", iterations), 
-        "", "", "" // Iterations
-    ])?;
-    // Write the headers
-    wtr.write_record(["Grid size", "Name", "Global Time (ms)", "Times per 10 Iterations", "Memory Usage before and after (MB)"])?;
-
-    for results in all_results{
-        for version_result in results {
-            let grid_size = version_result.0;
-            let name = &version_result.1;
-            let global_time = version_result.2;
-            let iteration_times = format!("{:?}", version_result.3);  // Convert Vec to string
-            let memory_use = format!("{:?}", version_result.4);
-
-            // Write each row in the CSV
-            wtr.write_record([&grid_size.to_string(), name, &global_time.to_string(), &iteration_times, &memory_use.to_string()])?;
-        }
-    }
-
-    wtr.flush()?;
-    Ok(())
-}
-    
-
-
 fn main() {
     // File name of the grid
-    let file_name = "blom.rle";
+    let file_name = "dense_init.rle";
     let file_path = format!("./grids/{}", file_name);
     // Number of iterations:
     let iterations: usize = 1000;
 
-    
-
-
     // ==== looping over grid sizes === 
     let scales = vec![3];
+    // let scales = [1];
     let mut all_results = Vec::new();
 
     for &scale in &scales {
@@ -267,7 +217,6 @@ fn main() {
         for (i, univ) in initial_universes.iter_mut().enumerate() {
             let (global_time, iteration_times, memory_use) = gather_iteration_info(univ, iterations);
             let name = universe_names[i];  // Get the name based on index
-
 
             // Add the result to the results vector
             version_results.push((width, name.to_string(), global_time, iteration_times.clone(), memory_use.clone()));

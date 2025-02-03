@@ -1,8 +1,12 @@
 #![allow(dead_code)]
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{BufRead, BufReader};
 use std::cmp;
 use std::cmp::Ordering;
+
+use sysinfo::{System, SystemExt};
+
+use csv::Writer;
 
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -191,4 +195,51 @@ pub fn display(mat: &Vec<Vec<u8>>)
             println!("{:?}", row);
         }
     }
+
+pub fn get_memory_usage() -> u64 {
+    let mut sys = System::new_all();
+    sys.refresh_memory();
+    sys.used_memory() // Returns memory usage in KB
+}
+    
+pub fn write_results_to_csv(
+    all_results: &Vec<Vec<(usize, String, u128, Vec<u128>, Vec<u64>)>>, 
+    filename: &str,  
+    iterations: usize, 
+    file_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    
+    let dir_name = "results_csv";
+    fs::create_dir_all(dir_name)?;
+    let file_path = format!("{}/{}", dir_name, filename);
+    let mut wtr = Writer::from_path(file_path)?;
+    
+    // Write metadata as the first row
+    wtr.write_record([
+        &format!("File Name: {}", file_name),  // This is the file name of the input file (e.g., "justyna.rle") 
+        //&format!(" Width: {}", grid_size.0),  // Width
+        //&format!(" Height: {}", grid_size.1),  // Height
+        &format!(" No. Iterations: {}", iterations), 
+        "", "", "" ] // Iterations
+        )?;
+    // Write the headers
+    wtr.write_record(["Grid size", "Name", "Global Time (ms)", "Times per 10 Iterations", "Memory Usage before and after (MB)"])?;
+    
+    for results in all_results{
+        for version_result in results {
+            let grid_size = version_result.0;
+            let name = &version_result.1;
+            let global_time = version_result.2;
+            let iteration_times = format!("{:?}", version_result.3);  // Convert Vec to string
+            let memory_use = format!("{:?}", version_result.4);
+    
+            // Write each row in the CSV
+            wtr.write_record([&grid_size.to_string(), name, &global_time.to_string(), &iteration_times, &memory_use.to_string()])?;
+        }
+    }
+    
+    wtr.flush()?;
+    Ok(())
+}
+        
+    
 
