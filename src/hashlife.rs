@@ -14,7 +14,7 @@ pub enum Cell {
 /// Struct representing a quadrant-based Hashlife Node
 #[derive(Clone, PartialEq, Eq, Debug)]
 struct Node {
-    size: u32,
+    size: usize,
     nw: Option<Box<Node>>,
     ne: Option<Box<Node>>,
     sw: Option<Box<Node>>,
@@ -42,7 +42,7 @@ pub struct Universe {
 
 impl Universe {
     /// Creates a new universe from a flat matrix
-    pub fn new_with_matrix(width: u32, height: u32, flat_matrix: Vec<u8>) -> Universe {
+    pub fn new_with_matrix(width: usize, height: usize, flat_matrix: Vec<u8>) -> Universe {
         let root = Universe::build_tree(width, height, &flat_matrix);
         Universe {
             cache: HashMap::new(),
@@ -51,7 +51,7 @@ impl Universe {
     }
 
     /// Recursively builds a quadtree from the flat matrix
-    fn build_tree(width: u32, height: u32, flat_matrix: &[u8]) -> Node {
+    fn build_tree(width: usize, height: usize, flat_matrix: &[u8]) -> Node {
         if width == 0 || height == 0 || flat_matrix.is_empty() {
             return Node {
                 size: 1,
@@ -64,7 +64,7 @@ impl Universe {
         }
 
         if width == 1 && height == 1 {
-            let cell = if flat_matrix.get(0).copied().unwrap_or(0) == 1 { 
+            let cell = if flat_matrix.first().copied().unwrap_or(0) == 1 { 
                 Cell::Alive 
             } else { 
                 Cell::Dead 
@@ -83,7 +83,7 @@ impl Universe {
         let half_height = height / 2;
         
         // Ensure there is enough data
-        if flat_matrix.len() < (width * height) as usize {
+        if flat_matrix.len() < width * height {
             return Node {
                 size: width,
                 nw: None,
@@ -101,18 +101,18 @@ impl Universe {
         let mut se_matrix = Vec::new();
 
         for row in 0..half_height {
-            let start = (row * width) as usize;
-            let mid = (start + half_width as usize) as usize;
-            let end = (start + width as usize) as usize;
+            let start = row * width;
+            let mid = start + half_width;
+            let end = start + width;
 
             nw_matrix.extend_from_slice(&flat_matrix[start..mid]);  // Top-left
             ne_matrix.extend_from_slice(&flat_matrix[mid..end]);    // Top-right
         }
 
         for row in half_height..height {
-            let start = (row * width) as usize;
-            let mid = (start + half_width as usize) as usize;
-            let end = (start + width as usize) as usize;
+            let start = row * width;
+            let mid = start + half_width;
+            let end = start + width;
 
             sw_matrix.extend_from_slice(&flat_matrix[start..mid]);  // Bottom-left
             se_matrix.extend_from_slice(&flat_matrix[mid..end]);    // Bottom-right
@@ -179,7 +179,7 @@ impl Universe {
     }
 
     /// Runs multiple iterations using Hashlife
-    pub fn run_iterations(&mut self, iterations: u32) {
+    pub fn run_iterations(&mut self, iterations: usize) {
         for _ in 0..iterations {
             self.tick();
         }

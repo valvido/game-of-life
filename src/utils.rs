@@ -37,7 +37,7 @@ pub fn parse_header(line: &str) -> (usize, usize) {
 
 pub fn iter_coords<F>(boardrow: &str, dims: (usize, usize), func: &mut F)
 where
-    F: FnMut(usize)
+    F: FnMut(u8)
 {
     let mut prefixnum: i64 = 0;
     let mut prefixset = false;
@@ -117,7 +117,7 @@ where
 }
 
 /// Read .rle file and return problem parameters
-pub fn init_from_file(file_path: &str) -> Vec<usize> {
+pub fn init_from_file(file_path: &str, width: usize) -> Vec<u8> {
     // Reads the file and saves as a string
     let f = BufReader::new(File::open(file_path).unwrap());
     let mut line_iter = f.lines();
@@ -140,23 +140,52 @@ pub fn init_from_file(file_path: &str) -> Vec<usize> {
         rle_str.push_str(&line.unwrap());
     }
 
-    let mut init_state: Vec<usize> = Vec::new();
+    let mut init_state: Vec<u8> = Vec::new();
     
     // Return initial grid as a N^2 sized vector
     iter_coords(rle_str.as_str(), dims, &mut |p| {
         init_state.push(p);
     });
 
-    init_state
+    // Embed initial state in the middle of NxN grid
+    let grid_size = (init_state.len() as f64).sqrt().floor() as usize;
+
+    let n_offset = calc_padding(width, grid_size);
+
+    let mut output_mat = vec![0; width*width];
+
+    // Copy the input matrix to the center of the result matrix
+    for i in 0..grid_size {
+        for j in 0..grid_size {
+            let source_idx = i * grid_size + j;
+            let target_idx = (i + n_offset) * width + (j + n_offset);
+            output_mat[target_idx] = init_state[source_idx];
+        }
+    }
+
+    output_mat
 }
 
-pub fn vec_to_matrix<T: Clone>(vec: &Vec<T>, n: usize) -> Vec<Vec<T>> {
+pub fn calc_padding(big_n: usize, grid_size: usize) -> usize{
+
+    assert!(big_n>grid_size, "Pattern {}sq is too big for grid of size {}", grid_size, big_n);
+
+    let diff = big_n-grid_size;
+
+    match diff%2 {
+        0 => diff/2,
+        1 => (diff+1)/2,
+        _ => panic!("INTEGER DIVISION BY 2 YIELDED SMTH WEIRDD!!!!")
+    }
+}
+
+pub fn vec_to_matrix<T: Clone>(vec: &[T], n: usize) -> Vec<Vec<T>> {
     vec.chunks(n)
         .map(|chunk| chunk.to_vec())
         .collect()
 }
 
-pub fn display(mat: &Vec<Vec<usize>>)
+pub fn display(mat: &Vec<Vec<u8>>)
 {
     for row in mat{
             println!("{:?}", row);

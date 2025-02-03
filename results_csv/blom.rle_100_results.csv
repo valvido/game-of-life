@@ -1,0 +1,8 @@
+File Name: blom.rle, Width: 12, Height: 12, no. Iterations: 100
+Name,Global Time (ms),Times per 10 Iterations,Memory Usage before and after (MB)
+Naive,2,"[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]","[550920, 551256]"
+Sparse,3,"[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]","[551464, 551676]"
+Optimized,1,"[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]","[551768, 551848]"
+TrackAliveCells,1,"[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]","[552036, 552128]"
+Parallel,3,"[0, 0, 0, 0, 0, 0, 0, 3, 3, 0]","[552272, 552332]"
+ParallelAlex,38,"[4, 1, 4, 2, 4, 2, 3, 2, 2, 2]","[552404, 552840]"
