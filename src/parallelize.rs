@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 use rayon::prelude::*;
+use crc32fast::Hasher;
 
 pub struct Universe {
     width: usize,
@@ -118,6 +119,20 @@ impl Universe {
         for _ in 0..iterations {
             self.tick();
         }
+    }
+
+    pub fn get_cells(&self) -> Vec<u8> {
+
+        let cells = self.active.clone();
+        cells.iter().map(|&cell| cell as u8).collect()
+    }
+
+    // Computes a CRC32 checksum to ensure correct evolution
+    pub fn crc32(&self ) -> u32 {
+        let mut hasher = Hasher::new();
+        let state = self.get_cells();
+        hasher.update(&state);
+        hasher.finalize()
     }
 
     /// Renders the current grid state as a string.

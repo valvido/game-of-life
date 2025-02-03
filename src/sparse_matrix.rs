@@ -4,6 +4,8 @@ use std::collections::{HashMap, HashSet};
 extern crate sysinfo;
 use sysinfo::{System, SystemExt}; 
 
+use crc32fast::Hasher;
+
 // Function to print memory usage
 fn print_memory_usage(label: &str) {
     let mut sys = System::new_all();
@@ -91,6 +93,28 @@ impl Universe {
         for _ in 0..iterations {
             self.tick();
         }
+    }
+
+    pub fn get_cells(&self) -> Vec<u8> {
+        let mut univ: Vec<u8> = Vec::new();
+        for row in 0..self.height {
+            for col in 0..self.width {
+                if self.live_cells.contains(&(row, col)) {
+                    univ.push(1);
+                } else {
+                    univ.push(0);
+                }
+            }
+        }
+        univ
+    }
+
+    // Computes a CRC32 checksum to ensure correct evolution
+    pub fn crc32(&self ) -> u32 {
+        let mut hasher = Hasher::new();
+        let state = self.get_cells();
+        hasher.update(&state);
+        hasher.finalize()
     }
 
     pub fn render(&self) -> String {

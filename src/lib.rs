@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 extern crate cfg_if;
 extern crate wasm_bindgen;
 extern crate sysinfo; // Add sysinfo crate
@@ -8,6 +9,7 @@ mod utils;
 use cfg_if::cfg_if;
 use sysinfo::{System, SystemExt}; // Import sysinfo
 use wasm_bindgen::prelude::*;
+use crc32fast::Hasher;
 
 cfg_if! {
     if #[cfg(feature = "wee_alloc")] {
@@ -123,6 +125,14 @@ impl Universe{
 
     pub fn get_height(&self) -> usize {
         self.height
+    }
+
+    // Computes a CRC32 checksum to ensure correct evolution
+    pub fn crc32(&self ) -> u32 {
+        let mut hasher = Hasher::new();
+        let state = self.get_cells();
+        hasher.update(&state);
+        hasher.finalize()
     }
 }
 

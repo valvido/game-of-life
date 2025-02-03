@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+use crc32fast::Hasher;
+
 //this version does not update the whole matrix (grid) but only keeps track of the part of the grid 
 //which is alive and active
 
@@ -96,6 +98,20 @@ impl Universe {
     #[inline]
     fn get_index(&self, row: usize, col: usize) -> usize {
         row * self.width + col
+    }
+
+    pub fn get_cells(&self) -> Vec<u8> {
+
+        let cells = self.active.clone();
+        cells.iter().map(|&cell| cell as u8).collect()
+    }
+
+    // Computes a CRC32 checksum to ensure correct evolution
+    pub fn crc32(&self) -> u32 {
+        let mut hasher = Hasher::new();
+        let state = self.get_cells();
+        hasher.update(&state);
+        hasher.finalize()
     }
 
     /// Runs the game for the specified number of iterations (ticks).

@@ -6,6 +6,7 @@ use cfg_if::cfg_if;
 use wasm_bindgen::prelude::*;
 use rayon::prelude::*; 
 use std::collections::{HashSet, HashMap};
+use crc32fast::Hasher;
 
 cfg_if! {
     // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -148,12 +149,35 @@ impl Universe {
         }
     }
 
-        /// Runs the game for the specified number of iterations (ticks).
-        pub fn run_iterations(&mut self, iterations: usize) {
-            for _ in 0..iterations {
-                self.tick();
+    /// Runs the game for the specified number of iterations (ticks).
+    pub fn run_iterations(&mut self, iterations: usize) {
+        for _ in 0..iterations {
+            self.tick();
+        }
+    }
+
+    pub fn get_cells(&self) -> Vec<u8> {
+        let mut univ: Vec<u8> = Vec::new();
+        for row in 0..self.height {
+            for col in 0..self.width {
+                if self.live_cells.contains(&(row, col)) {
+                    univ.push(1);
+                } else {
+                    univ.push(0);
+                }
             }
         }
+        univ
+    }
+
+    // Computes a CRC32 checksum to ensure correct evolution
+    pub fn crc32(&self ) -> u32 {
+        let mut hasher = Hasher::new();
+        let state = self.get_cells();
+        hasher.update(&state);
+        hasher.finalize()
+    }
+
 
     pub fn render(&self) -> String {
         let mut buffer = String::new();

@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use crc32fast::Hasher;
 
 //this is still a sequential algorithm but it has some optimizations for cache eficiency
 pub struct Universe {
@@ -80,6 +81,14 @@ impl Universe {
         for _ in 0..iterations {
             self.tick(); // Advance the game by one tick for each iteration.
         }
+    }
+
+    // Computes a CRC32 checksum to ensure correct evolution
+    pub fn crc32(&self ) -> u32 {
+        let mut hasher = Hasher::new();
+        let state = &self.current;
+        hasher.update(state);
+        hasher.finalize()
     }
 
     /// Renders the current grid state as a string, where:

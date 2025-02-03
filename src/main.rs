@@ -122,25 +122,29 @@ fn global_ticker(universe:&mut AnyUniverse){
     }
 }
 
-fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128, Vec<u128>, Vec<u64>) {
+// Compute CRC32 for the current state
+fn universe_check(universe:&mut AnyUniverse) -> u32{
+
+    // Match on the enum and call the corresponding crc32() method
+    match universe {
+        AnyUniverse::Naive(u) => u.crc32(),
+        AnyUniverse::Sparse(u) => u.crc32(),
+        AnyUniverse::Optimized(u) => u.crc32(),
+        AnyUniverse::TrackAliveCells(u) => u.crc32(),
+        AnyUniverse::Parallel(u) => u.crc32(),
+        AnyUniverse::HashParallel(u) => u.crc32(),
+        AnyUniverse::Bitwise(u) => u.crc32(),
+        AnyUniverse::Hashlife(u) => u.crc32(),
+    }
+}
+
+fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128, Vec<u128>, Vec<u64>, Vec<String>){
     
     let mut iteration_times = Vec::new();
+    let mut checksums: Vec<String> = Vec::new();
     let mut memory_use = Vec::new();
     memory_use.push(get_memory_usage()/1024);
 
-    /* let global_start = Instant::now(); 
-
-    match universe {
-        AnyUniverse::Naive(u) => u.run_iterations(iterations),
-        AnyUniverse::Sparse(u) => u.run_iterations(iterations),
-        AnyUniverse::Optimized(u) => u.run_iterations(iterations),
-        AnyUniverse::TrackAliveCells(u) => u.run_iterations(iterations),
-        AnyUniverse::Parallel(u) => u.run_iterations(iterations),
-        AnyUniverse::HashParallel(u) => u.run_iterations(iterations),
-        AnyUniverse::Bitwise(u) => u.run_iterations(iterations),
-    }
-    let global_time = global_start.elapsed().as_millis(); // Total elapsed time
- */
     let global_start = Instant::now();
     let mut iter_start = Instant::now();
 
@@ -156,7 +160,10 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
 
             global_ticker(universe);
             // Record time per 10 interations
+            let check = format!("{:06X}", universe_check(universe)) ;
             let iter_time = iter_start.elapsed().as_millis();
+
+            checksums.push(check);
             iteration_times.push(iter_time);
             
         } else {
@@ -166,31 +173,28 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
     let global_time = global_start.elapsed().as_millis(); // Total elapsed time
     memory_use.push(get_memory_usage()/1024);
     
-    (global_time, iteration_times, memory_use)
+    (global_time, iteration_times, memory_use, checksums)
 }
 
 fn main() {
     // File name of the grid
-    let file_name = "dense_init.rle";
+    let file_name = "justyna.rle";
     let file_path = format!("./grids/{}", file_name);
     // Number of iterations:
-    let iterations: usize = 1000;
+    let iterations: usize = 100;
 
-    // ==== looping over grid sizes === 
-    let scales = vec![3];
-    // let scales = [1];
     let mut all_results = Vec::new();
+    let scale = 3;
 
-    for &scale in &scales {
-        // Size of the universe:
-        let width = usize::pow(2, 6 + scale);
-        // Read RLE file and initialize the flat matrix
-        let flat_matrix: Vec<u8> = init_from_file(&file_path, width);
+    let width = usize::pow(2, 6 + scale);
+    
+    // Read RLE file and initialize the flat matrix
+    let flat_matrix: Vec<u8> = init_from_file(&file_path, width);
 
-        // --- Initialization ---
-        let (naive_universe,  sparse_universe,  optimized_universe, track_alive_cells_universe, parallel_universe, 
+    // --- Initialization ---
+    let (naive_universe,  sparse_universe,  optimized_universe, track_alive_cells_universe, parallel_universe, 
             hashed_parallel_universe, bitwise_universe, hashlife_universe) = initialize_all(flat_matrix, width, width);
-        let mut initial_universes: Vec<AnyUniverse> = vec![
+    let mut initial_universes: Vec<AnyUniverse> = vec![
             AnyUniverse::Naive(naive_universe),
             AnyUniverse::Sparse(sparse_universe),
             AnyUniverse::Optimized(optimized_universe),
@@ -200,7 +204,7 @@ fn main() {
             AnyUniverse::Bitwise(bitwise_universe),
             AnyUniverse::Hashlife(hashlife_universe)
         ];
-        let universe_names = [
+    let universe_names = [
             "Naive", 
             "Sparse", 
             "Optimized", 
@@ -211,29 +215,40 @@ fn main() {
             "Hashlife"
         ];
 
-        // --- Result Printing ---
-        let mut version_results = Vec::new();
+    // --- Result Printing ---
+    let mut version_results = Vec::new();
 
-        for (i, univ) in initial_universes.iter_mut().enumerate() {
-            let (global_time, iteration_times, memory_use) = gather_iteration_info(univ, iterations);
-            let name = universe_names[i];  // Get the name based on index
+    for (i, univ) in initial_universes.iter_mut().enumerate(){
 
-            // Add the result to the results vector
-            version_results.push((width, name.to_string(), global_time, iteration_times.clone(), memory_use.clone()));
 
-            // Print results
-            println!("Done: {} {}: ", width, name);
-            //println!();  // Empty line after each result
-        }
-        all_results.push(version_results);
+        let name = universe_names[i];  // Get the name based on index
+        println!("{} -- Initial state: {:06X}", name, universe_check(univ));
         
-    }
+        let (global_time, iteration_times, memory_use, universe_checks) = gather_iteration_info(univ, iterations);
+        
+        // Add the result to the results vector
+        version_results.push(
+            (width, name.to_string(), 
+            global_time, 
+            iteration_times.clone(), 
+            memory_use.clone(),
+            universe_checks.clone()
+            )
+        );
 
-    let output_file_name = format!("{}_{}_{:?}_results.csv", file_name, iterations, scales.last().unwrap());  // Use the existing `file_name` variable
+        // Print results
+        println!("Global time: {} ms, \nTime per 10 iterations: {:?}, \ncrc32 after 10 iterations {:?}, \nMemory use in MB: {:?}", 
+                 global_time, iteration_times, universe_checks, memory_use);
+        println!();  // Empty line after each result
+    }
+    all_results.push(version_results);
+    
+    /* 
+    let output_file_name = format!("{}_{}_{:?}_results.csv", file_name, iterations, scale);  // Use the existing `file_name` variable
 
     if let Err(e) = write_results_to_csv(&all_results, &output_file_name, iterations, file_name) {
         eprintln!("Error writing to CSV file: {}", e);
-    }
+    } */
 }
 
 

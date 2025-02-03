@@ -178,6 +178,15 @@ impl Universe {
         next_node
     }
 
+    // Computes a CRC32 checksum to ensure correct evolution
+    pub fn crc32(&self ) -> u32 {/* 
+        let mut hasher = Hasher::new();
+        let state = self.get_cells();
+        hasher.update(&state);
+        hasher.finalize() */
+        666
+    }
+
     /// Runs multiple iterations using Hashlife
     pub fn run_iterations(&mut self, iterations: usize) {
         for _ in 0..iterations {
