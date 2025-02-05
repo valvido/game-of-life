@@ -33,57 +33,58 @@ impl Universe {
         }
     }
 
-    /// Advances the game by one tick.
-    pub fn tick(&mut self) {
-        let mut new_active = vec![false; self.width * self.height];
+   /// Advances the game by one tick.
+pub fn tick(&mut self) {
+    let mut new_active = vec![false; self.width * self.height];
 
-        for row in 0..self.height {
-            for col in 0..self.width {
-                let idx = self.get_index(row, col);
+    for row in 0..self.height {
+        for col in 0..self.width {
+            let idx = self.get_index(row, col);
 
-                // Skip inactive cells
-                if !self.active[idx] {
-                    continue;
-                }
+            // Count live neighbors correctly
+            let live_neighbors = self.count_live_neighbors(row, col);
 
-                let live_neighbors = self.count_live_neighbors(row, col);
+            // Apply Game of Life rules correctly
+            self.next[idx] = match (self.current[idx], live_neighbors) {
+                (1, 2) | (1, 3) => 1, // Alive cell survives
+                (0, 3) => 1,          // Dead cell becomes alive
+                _ => 0,               // Otherwise, the cell dies
+            };
 
-                // Apply Game of Life rules
-                self.next[idx] = match (self.current[idx], live_neighbors) {
-                    (1, 2) | (1, 3) => 1, // Alive cell survives
-                    (0, 3) => 1,          // Dead cell becomes alive
-                    _ => 0,               // Otherwise, the cell dies
-                };
-
-                // Mark cell and its neighbors as active
-                if self.next[idx] == 1 {
-                    new_active[idx] = true;
-                    for &(dr, dc) in self.neighbor_deltas().iter() {
-                        let neighbor_row = (row as isize + dr + self.height as isize) % self.height as isize;
-                        let neighbor_col = (col as isize + dc + self.width as isize) % self.width as isize;
-                        let neighbor_idx = self.get_index(neighbor_row as usize, neighbor_col as usize);
-                        new_active[neighbor_idx] = true;
-                    }
+            // If a cell is alive in the next state, mark itself and its neighbors as active
+            if self.next[idx] == 1 {
+                new_active[idx] = true;
+                for &(dr, dc) in self.neighbor_deltas().iter() {
+                    let neighbor_row = (row as isize + dr + self.height as isize) % self.height as isize;
+                    let neighbor_col = (col as isize + dc + self.width as isize) % self.width as isize;
+                    let neighbor_idx = self.get_index(neighbor_row as usize, neighbor_col as usize);
+                    new_active[neighbor_idx] = true; // Track immediate neighbors
                 }
             }
         }
-
-        // Swap grids and update active cells
-        std::mem::swap(&mut self.current, &mut self.next);
-        self.active = new_active;
     }
 
-    /// Counts the number of live neighbors for a given cell.
-    fn count_live_neighbors(&self, row: usize, col: usize) -> u8 {
-        self.neighbor_deltas()
-            .iter()
-            .fold(0, |count, &(dr, dc)| {
-                let neighbor_row = (row as isize + dr + self.height as isize) % self.height as isize;
-                let neighbor_col = (col as isize + dc + self.width as isize) % self.width as isize;
-                let neighbor_idx = self.get_index(neighbor_row as usize, neighbor_col as usize);
-                count + self.current[neighbor_idx]
-            })
+    // Swap grids and update active cells
+    std::mem::swap(&mut self.current, &mut self.next);
+    self.active = new_active;
+}
+
+/// Counts the number of live neighbors for a given cell.
+fn count_live_neighbors(&self, row: usize, col: usize) -> u8 {
+    let mut count = 0;
+
+    for &(dr, dc) in self.neighbor_deltas().iter() {
+        let neighbor_row = (row as isize + dr + self.height as isize) % self.height as isize;
+        let neighbor_col = (col as isize + dc + self.width as isize) % self.width as isize;
+        let neighbor_idx = self.get_index(neighbor_row as usize, neighbor_col as usize);
+        
+        count += self.current[neighbor_idx]; // Correctly sum up live neighbors
     }
+
+    count
+}
+
+
 
     /// Returns the precomputed neighbor offsets.
     fn neighbor_deltas(&self) -> &'static [(isize, isize)] {
@@ -102,7 +103,7 @@ impl Universe {
 
     pub fn get_cells(&self) -> Vec<u8> {
 
-        let cells = self.active.clone();
+        let cells = self.current.clone();
         cells.iter().map(|&cell| cell as u8).collect()
     }
 
