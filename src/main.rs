@@ -1,10 +1,12 @@
-#![allow(unused_imports)]
+#![allow(unused_imports, dead_code)]
 mod optimized_alg;
 mod track_alive_cells;
 mod parallelize;
 mod traits;  // This declares the traits module
 mod hashed_parallel;
 mod bitwise;
+mod sparse_matrix;
+mod naive;
 
 use crate::traits::TickUniv;
 use hashed_parallel::Universe as HashParallelUniverse;
@@ -14,11 +16,12 @@ mod hashlife;  // New Hashlife module
 use hashlife::Universe as HashlifeUniverse;  // New import for Hashlife
 use parallelize::Universe as ParallelUniverse;
 use optimized_alg::Universe as OptimizedUniverse;
-use wasm_game_of_life::{Universe as NaiveUniverse, Cell as NaiveCell};
-use wasm_game_of_life::sparse_matrix::Universe as SparseUniverse;
+use naive::{Universe as NaiveUniverse, Cell as NaiveCell};
+use sparse_matrix::Universe as SparseUniverse;
 use track_alive_cells::Universe as TrackAliveCellsUniverse;
 use bitwise::Universe as BWUniverse;
 
+use std::fmt::format;
 use std::time::Instant;
 use rand::Rng;
 use sysinfo::{System, SystemExt};
@@ -122,25 +125,45 @@ fn global_ticker(universe:&mut AnyUniverse){
     }
 }
 
-fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128, Vec<u128>, Vec<u64>) {
+// Advances one time step for any possible impl
+fn universe_iterator(universe:&mut AnyUniverse, n_iter: usize){
+
+    // Match on the enum and call the corresponding tick() method
+    match universe {
+        AnyUniverse::Naive(u) => u.run_iterations(n_iter),
+        AnyUniverse::Sparse(u) => u.run_iterations(n_iter),
+        AnyUniverse::Optimized(u) => u.run_iterations(n_iter),
+        AnyUniverse::TrackAliveCells(u) => u.run_iterations(n_iter),
+        AnyUniverse::Parallel(u) => u.run_iterations(n_iter),
+        AnyUniverse::HashParallel(u) => u.run_iterations(n_iter),
+        AnyUniverse::Bitwise(u) => u.run_iterations(n_iter),
+        AnyUniverse::Hashlife(u) => u.run_iterations(n_iter),
+    }
+}
+
+// Compute CRC32 for the current state
+fn universe_check(universe:&mut AnyUniverse) -> u32{
+
+    // Match on the enum and call the corresponding crc32() method
+    match universe {
+        AnyUniverse::Naive(u) => u.crc32(),
+        AnyUniverse::Sparse(u) => u.crc32(),
+        AnyUniverse::Optimized(u) => u.crc32(),
+        AnyUniverse::TrackAliveCells(u) => u.crc32(),
+        AnyUniverse::Parallel(u) => u.crc32(),
+        AnyUniverse::HashParallel(u) => u.crc32(),
+        AnyUniverse::Bitwise(u) => u.crc32(),
+        AnyUniverse::Hashlife(u) => u.crc32(),
+    }
+}
+
+fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128, Vec<u128>, Vec<u64>, Vec<String>){
     
     let mut iteration_times = Vec::new();
+    let mut checksums: Vec<String> = Vec::new();
     let mut memory_use = Vec::new();
     memory_use.push(get_memory_usage()/1024);
 
-    /* let global_start = Instant::now(); 
-
-    match universe {
-        AnyUniverse::Naive(u) => u.run_iterations(iterations),
-        AnyUniverse::Sparse(u) => u.run_iterations(iterations),
-        AnyUniverse::Optimized(u) => u.run_iterations(iterations),
-        AnyUniverse::TrackAliveCells(u) => u.run_iterations(iterations),
-        AnyUniverse::Parallel(u) => u.run_iterations(iterations),
-        AnyUniverse::HashParallel(u) => u.run_iterations(iterations),
-        AnyUniverse::Bitwise(u) => u.run_iterations(iterations),
-    }
-    let global_time = global_start.elapsed().as_millis(); // Total elapsed time
- */
     let global_start = Instant::now();
     let mut iter_start = Instant::now();
 
@@ -156,7 +179,12 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
 
             global_ticker(universe);
             // Record time per 10 interations
+            let check = format!("{:06X}", universe_check(universe)) ;
+
+            // let check = format!("{}", universe_check(universe)) ;
             let iter_time = iter_start.elapsed().as_millis();
+
+            checksums.push(check);
             iteration_times.push(iter_time);
             
         } else {
@@ -166,44 +194,93 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
     let global_time = global_start.elapsed().as_millis(); // Total elapsed time
     memory_use.push(get_memory_usage()/1024);
     
-    (global_time, iteration_times, memory_use)
+    (global_time, iteration_times, memory_use, checksums)
+}
+
+
+fn measure_time(universe: &mut AnyUniverse, iterations: usize) -> u128{
+    
+    let start = Instant::now();
+
+    // Run the universe for the given number of iterations
+    universe_iterator(universe, iterations);
+    
+    start.elapsed().as_millis() 
 }
 
 fn main() {
+
+    // // Get scale and iterations from command line
+    // let args: Vec<String> = env::args().collect();
+    // let scale = &args[1].parse::<u32>().unwrap();
+    // let iterations = &args[2].parse::<usize>().unwrap();
+    
+    // PARAMETERS
+    let iterations: usize = 100;
+    let scale = 3;
+    let width = usize::pow(2, 6 + scale);
+
+    let seed: u64 = 420;
+
+    let output_filename = format!("results_csv/test_{}_{}.csv", width, iterations);
+    let mut output_file = File::create(&output_filename).expect("UNABLE TO CREATE CSV FILE: {}" );
+
+    let headers = format!("PATTERN, ALGORITHM, RUNTIME(ms)");
+
+    writeln!(output_file, "{}", headers).expect("Error writing headers");
+
+    // INITIAL STATES
     // File name of the grid
-    let file_name = "dense_init.rle";
-    let file_path = format!("./grids/{}", file_name);
-    // Number of iterations:
-    let iterations: usize = 1000;
+    let patterns = [
+            "justyna.rle", 
+            "ark1.rle", 
+            "blom.rle", 
+            "52513m.rle", 
+            "rand_10",
+            "rand_55",
+            "rand_80"
+        ];
 
-    // ==== looping over grid sizes === 
-    let scales = vec![3];
-    // let scales = [1];
-    let mut all_results = Vec::new();
+    for pat in patterns{
 
-    for &scale in &scales {
-        // Size of the universe:
-        let width = usize::pow(2, 6 + scale);
-        // Read RLE file and initialize the flat matrix
-        let flat_matrix: Vec<u8> = init_from_file(&file_path, width);
+        let flat_matrix: Vec<u8>;
+    
+        if pat.contains(".rle"){
+
+            // Read RLE file and initialize the flat matrix
+            let file_path = format!("./grids/{}", pat);
+            flat_matrix = init_from_file(&file_path, width);
+
+        } else {
+    
+            let aux_str = pat.split("_").last().unwrap();
+            let mut p_live: f64 = aux_str.parse().unwrap();
+            p_live = p_live/100.;
+            flat_matrix = random_init(width, p_live, seed);
+        }
+
+        let sample_mean = flat_matrix.iter().filter(|x| **x==1).count() as f64 / (width*width) as f64;
+        println!("{} -- % of Alive Cells: {:.3}", pat, sample_mean);
 
         // --- Initialization ---
         let (naive_universe,  sparse_universe,  optimized_universe, track_alive_cells_universe, parallel_universe, 
-            hashed_parallel_universe, bitwise_universe, hashlife_universe) = initialize_all(flat_matrix, width, width);
+                hashed_parallel_universe, bitwise_universe, hashlife_universe) = initialize_all(flat_matrix, width, width);
+
         let mut initial_universes: Vec<AnyUniverse> = vec![
-            AnyUniverse::Naive(naive_universe),
-            AnyUniverse::Sparse(sparse_universe),
-            AnyUniverse::Optimized(optimized_universe),
-            AnyUniverse::TrackAliveCells(track_alive_cells_universe),
-            AnyUniverse::Parallel(parallel_universe),
-            AnyUniverse::HashParallel(hashed_parallel_universe),
-            AnyUniverse::Bitwise(bitwise_universe),
-            AnyUniverse::Hashlife(hashlife_universe)
+                AnyUniverse::Naive(naive_universe),
+                AnyUniverse::Sparse(sparse_universe),
+                AnyUniverse::Optimized(optimized_universe),
+                AnyUniverse::TrackAliveCells(track_alive_cells_universe),
+                AnyUniverse::Parallel(parallel_universe),
+                AnyUniverse::HashParallel(hashed_parallel_universe),
+                AnyUniverse::Bitwise(bitwise_universe),
+                AnyUniverse::Hashlife(hashlife_universe)
         ];
+
         let universe_names = [
             "Naive", 
             "Sparse", 
-            "Optimized", 
+            "Optimized",
             "TrackAliveCells", 
             "Parallel", 
             "HashParallel",
@@ -211,28 +288,15 @@ fn main() {
             "Hashlife"
         ];
 
-        // --- Result Printing ---
-        let mut version_results = Vec::new();
+        for (i, univ) in initial_universes.iter_mut().enumerate(){
 
-        for (i, univ) in initial_universes.iter_mut().enumerate() {
-            let (global_time, iteration_times, memory_use) = gather_iteration_info(univ, iterations);
-            let name = universe_names[i];  // Get the name based on index
+            let runtime = measure_time(univ, iterations);
 
-            // Add the result to the results vector
-            version_results.push((width, name.to_string(), global_time, iteration_times.clone(), memory_use.clone()));
+            let entry = format!("{}, {}, {}", pat, universe_names[i], runtime);
 
-            // Print results
-            println!("Done: {} {}: ", width, name);
-            //println!();  // Empty line after each result
+            writeln!(output_file, "{}", entry).expect("Error writing line");
+            println!("{}", entry);
         }
-        all_results.push(version_results);
-        
-    }
-
-    let output_file_name = format!("{}_{}_{:?}_results.csv", file_name, iterations, scales.last().unwrap());  // Use the existing `file_name` variable
-
-    if let Err(e) = write_results_to_csv(&all_results, &output_file_name, iterations, file_name) {
-        eprintln!("Error writing to CSV file: {}", e);
     }
 }
 

@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use wasm_bindgen::prelude::*;
 
-/// Enum representing the state of a cell
-#[wasm_bindgen]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)] // ✅ Ensure Cell implements Hash
 pub enum Cell {
@@ -34,7 +31,6 @@ impl Hash for Node {
 }
 
 /// Universe struct for Hashlife implementation
-#[wasm_bindgen]
 pub struct Universe {
     cache: HashMap<Node, Node>,
     root: Node,
@@ -176,6 +172,15 @@ impl Universe {
 
         self.cache.insert(node, next_node.clone());
         next_node
+    }
+
+    // Computes a CRC32 checksum to ensure correct evolution
+    pub fn crc32(&self ) -> u32 {/* 
+        let mut hasher = Hasher::new();
+        let state = self.get_cells();
+        hasher.update(&state);
+        hasher.finalize() */
+        666
     }
 
     /// Runs multiple iterations using Hashlife

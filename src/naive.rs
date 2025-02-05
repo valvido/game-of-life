@@ -1,21 +1,7 @@
-extern crate cfg_if;
-extern crate wasm_bindgen;
-extern crate sysinfo; // Add sysinfo crate
+#![allow(dead_code)]
 
-pub mod sparse_matrix;
-mod utils;
-
-use cfg_if::cfg_if;
 use sysinfo::{System, SystemExt}; // Import sysinfo
-use wasm_bindgen::prelude::*;
-
-cfg_if! {
-    if #[cfg(feature = "wee_alloc")] {
-        extern crate wee_alloc;
-        #[global_allocator]
-        static ALLOC: wee_alloc::WeeAlloc = wee_alloc::INIT;
-    }
-}
+use crc32fast::Hasher;
 
 // Function to print memory usage
 fn print_memory_usage(label: &str) {
@@ -25,12 +11,6 @@ fn print_memory_usage(label: &str) {
     println!("{} - Memory Usage: {} MB", label, memory_used / 1024);
 }
 
-#[wasm_bindgen(start)]
-pub fn main() {
-    console_error_panic_hook::set_once();
-}
-
-#[wasm_bindgen]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cell {
@@ -38,7 +18,6 @@ pub enum Cell {
     Alive = 1,
 }
 
-#[wasm_bindgen]
 pub struct Universe {
     width: usize,
     height: usize,
@@ -68,7 +47,7 @@ impl Universe {
     }
 }
 
-#[wasm_bindgen]
+
 impl Universe{
     pub fn tick(&mut self) {
         let mut next = self.cells.clone();
@@ -123,6 +102,14 @@ impl Universe{
 
     pub fn get_height(&self) -> usize {
         self.height
+    }
+
+    // Computes a CRC32 checksum to ensure correct evolution
+    pub fn crc32(&self ) -> u32 {
+        let mut hasher = Hasher::new();
+        let state = self.get_cells();
+        hasher.update(&state);
+        hasher.finalize()
     }
 }
 

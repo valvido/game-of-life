@@ -1,11 +1,13 @@
 #![allow(dead_code)]
-extern crate cfg_if;
-extern crate wasm_bindgen;
 
-use cfg_if::cfg_if;
-use wasm_bindgen::prelude::*;
 use rayon::prelude::*; 
 use std::collections::{HashSet, HashMap};
+use crc32fast::Hasher;
+
+/* extern crate cfg_if;
+extern crate wasm_bindgen;
+use cfg_if::cfg_if;
+use wasm_bindgen::prelude::*; 
 
 cfg_if! {
     // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -15,9 +17,10 @@ cfg_if! {
         #[global_allocator]
         static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
     }
-}
+} 
+*/
 
-#[wasm_bindgen]
+// #[wasm_bindgen]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cell {
@@ -25,7 +28,7 @@ pub enum Cell {
     Alive = 1,
 }
 
-#[wasm_bindgen]
+// #[wasm_bindgen]
 #[derive(Clone, Debug)]
 pub struct Universe {
     width: usize,
@@ -61,9 +64,8 @@ impl Universe {
     }
 }
 
-
 // generation calculation
-#[wasm_bindgen]
+// #[wasm_bindgen]
 impl Universe {
     pub fn tick(&mut self) {
         let live_cells = &self.live_cells;
@@ -102,32 +104,6 @@ impl Universe {
 
         self.live_cells = next_state;
 
-
-        /*
-        pub fn tick(&mut self) {
-            let mut neighbor_counts: HashMap<(u32, u32), u32> = HashMap::new();
-    
-            // Count live neighbors for all cells
-            for &(row, col) in &self.live_cells {
-                for neighbor in self.get_neighbors(row, col) {
-                    *neighbor_counts.entry(neighbor).or_insert(0) += 1;
-                }
-            }
-    
-            let mut next_live_cells = HashSet::new();
-    
-            // Apply rules based on neighbor counts
-            for (cell, count) in neighbor_counts {
-                if count == 3 || (count == 2 && self.live_cells.contains(&cell)) {
-                    next_live_cells.insert(cell);
-                }
-            }
-    
-            self.live_cells = next_live_cells;
-        }
-        self.cells = next;
-        */
-
     }
 
     pub fn new_with_matrix(width: usize, height: usize, flat_matrix: Vec<u8>) -> Universe {
@@ -148,12 +124,35 @@ impl Universe {
         }
     }
 
-        /// Runs the game for the specified number of iterations (ticks).
-        pub fn run_iterations(&mut self, iterations: usize) {
-            for _ in 0..iterations {
-                self.tick();
+    /// Runs the game for the specified number of iterations (ticks).
+    pub fn run_iterations(&mut self, iterations: usize) {
+        for _ in 0..iterations {
+            self.tick();
+        }
+    }
+
+    pub fn get_cells(&self) -> Vec<u8> {
+        let mut univ: Vec<u8> = Vec::new();
+        for row in 0..self.height {
+            for col in 0..self.width {
+                if self.live_cells.contains(&(row, col)) {
+                    univ.push(1);
+                } else {
+                    univ.push(0);
+                }
             }
         }
+        univ
+    }
+
+    // Computes a CRC32 checksum to ensure correct evolution
+    pub fn crc32(&self ) -> u32 {
+        let mut hasher = Hasher::new();
+        let state = self.get_cells();
+        hasher.update(&state);
+        hasher.finalize()
+    }
+
 
     pub fn render(&self) -> String {
         let mut buffer = String::new();

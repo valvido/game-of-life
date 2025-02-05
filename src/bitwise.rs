@@ -1,23 +1,6 @@
-extern crate cfg_if;
-extern crate wasm_bindgen;
+use crc32fast::Hasher;
 
-use cfg_if::cfg_if;
-use wasm_bindgen::prelude::*;
 
-cfg_if! {
-    if #[cfg(feature = "wee_alloc")] {
-        extern crate wee_alloc;
-        #[global_allocator]
-        static ALLOC: wee_alloc::WeeAlloc = wee_alloc::INIT;
-    }
-}
-
-#[wasm_bindgen(start)]
-pub fn main() {
-    console_error_panic_hook::set_once();
-}
-
-#[wasm_bindgen]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cell {
@@ -25,7 +8,6 @@ pub enum Cell {
     Alive = 1,
 }
 
-#[wasm_bindgen]
 pub struct Universe {
     width: usize,
     height: usize,
@@ -70,7 +52,7 @@ impl Universe {
     }
 }
 
-#[wasm_bindgen]
+
 impl Universe {
     pub fn new(width: usize, height: usize, flat_matrix: Vec<u8>) -> Universe {
         let num_bytes = (width * height + 7) / 8;
@@ -123,6 +105,26 @@ impl Universe {
         for _ in 0..iterations {
             self.tick();
         }
+    }
+
+    pub fn get_cells(&self) -> Vec<u8> {
+        let mut univ: Vec<u8> = Vec::new();
+        for row in 0..self.height {
+            for col in 0..self.width {
+                let (byte_index, bit_mask) = self.get_index(row, col);
+                let cell = if self.cells[byte_index] & bit_mask != 0 {1} else {0};
+                univ.push(cell);
+            }
+        }
+        univ
+    }
+
+    // Computes a CRC32 checksum to ensure correct evolution
+    pub fn crc32(&self ) -> u32 {
+        let mut hasher = Hasher::new();
+        let state = self.get_cells();
+        hasher.update(&state);
+        hasher.finalize()
     }
 
     pub fn render(&self) -> String {

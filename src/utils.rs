@@ -8,16 +8,9 @@ use sysinfo::{System, SystemExt};
 
 use csv::Writer;
 
-pub fn set_panic_hook() {
-    // When the `console_error_panic_hook` feature is enabled, we can call the
-    // `set_panic_hook` function at least once during initialization, and then
-    // we will get better error messages if our code ever panics.
-    //
-    // For more details see
-    // https://github.com/rustwasm/console_error_panic_hook#readme
-    #[cfg(feature = "console_error_panic_hook")]
-    console_error_panic_hook::set_once();
-}
+use rand::distributions::Bernoulli;
+use rand::{Rng, SeedableRng};
+use rand::rngs::StdRng;
 
 pub fn parse_header(line: &str) -> (usize, usize) {
     // Extract x value from header line "x = N, y = N, rule = B3/S23"
@@ -170,6 +163,17 @@ pub fn init_from_file(file_path: &str, width: usize) -> Vec<u8> {
     output_mat
 }
 
+
+pub fn random_init(width: usize, p_live: f64, seed: u64) -> Vec<u8>{
+
+    let bernoulli = Bernoulli::new(p_live).unwrap();
+    let mut r = StdRng::seed_from_u64(seed);
+
+    // Generate n Bernoulli trials
+    (0..width*width).map(|_| r.sample(bernoulli) as u8).collect()
+}
+
+
 pub fn calc_padding(big_n: usize, grid_size: usize) -> usize{
 
     assert!(big_n>grid_size, "Pattern {}sq is too big for grid of size {}", grid_size, big_n);
@@ -203,7 +207,7 @@ pub fn get_memory_usage() -> u64 {
 }
     
 pub fn write_results_to_csv(
-    all_results: &Vec<Vec<(usize, String, u128, Vec<u128>, Vec<u64>)>>, 
+    all_results: &Vec<Vec<(usize, String, u128, Vec<u128>, Vec<u64>, Vec<u32>)>>, 
     filename: &str,  
     iterations: usize, 
     file_name: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -222,7 +226,7 @@ pub fn write_results_to_csv(
         "", "", "" ] // Iterations
         )?;
     // Write the headers
-    wtr.write_record(["Grid size", "Name", "Global Time (ms)", "Times per 10 Iterations", "Memory Usage before and after (MB)"])?;
+    wtr.write_record(["Grid size", "Name", "Global Time (ms)", "Times per 10 Iterations", "Memory Usage before and after (MB)", "crc32"])?;
     
     for results in all_results{
         for version_result in results {
@@ -231,9 +235,17 @@ pub fn write_results_to_csv(
             let global_time = version_result.2;
             let iteration_times = format!("{:?}", version_result.3);  // Convert Vec to string
             let memory_use = format!("{:?}", version_result.4);
+            let checks = format!("{:?}", version_result.5);
     
             // Write each row in the CSV
-            wtr.write_record([&grid_size.to_string(), name, &global_time.to_string(), &iteration_times, &memory_use.to_string()])?;
+            wtr.write_record(
+                [&grid_size.to_string(), 
+                name, 
+                &global_time.to_string(), 
+                &iteration_times, 
+                &memory_use.to_string(),
+                &checks]
+            )?;
         }
     }
     

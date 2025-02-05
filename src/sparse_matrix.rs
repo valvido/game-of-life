@@ -1,8 +1,8 @@
 #![allow(dead_code)]
-use wasm_bindgen::prelude::*;
+// use wasm_bindgen::prelude::*;
 use std::collections::{HashMap, HashSet};
-extern crate sysinfo;
 use sysinfo::{System, SystemExt}; 
+use crc32fast::Hasher;
 
 // Function to print memory usage
 fn print_memory_usage(label: &str) {
@@ -12,7 +12,6 @@ fn print_memory_usage(label: &str) {
     println!("{} - Memory Usage: {} MB", label, memory_used / 1024);
 }
 
-#[wasm_bindgen]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cell {
@@ -20,7 +19,6 @@ pub enum Cell {
     Alive = 1,
 }
 
-#[wasm_bindgen]
 pub struct Universe {
     width: usize,
     height: usize,
@@ -46,7 +44,6 @@ impl Universe {
     }
 }
 
-#[wasm_bindgen]
 impl Universe {
     pub fn tick(&mut self) {
         let mut neighbor_counts: HashMap<(usize, usize), usize> = HashMap::new();
@@ -91,6 +88,28 @@ impl Universe {
         for _ in 0..iterations {
             self.tick();
         }
+    }
+
+    pub fn get_cells(&self) -> Vec<u8> {
+        let mut univ: Vec<u8> = Vec::new();
+        for row in 0..self.height {
+            for col in 0..self.width {
+                if self.live_cells.contains(&(row, col)) {
+                    univ.push(1);
+                } else {
+                    univ.push(0);
+                }
+            }
+        }
+        univ
+    }
+
+    // Computes a CRC32 checksum to ensure correct evolution
+    pub fn crc32(&self ) -> u32 {
+        let mut hasher = Hasher::new();
+        let state = self.get_cells();
+        hasher.update(&state);
+        hasher.finalize()
     }
 
     pub fn render(&self) -> String {
