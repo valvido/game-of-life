@@ -1,24 +1,11 @@
+// This algorithm stores live cells in a HashSet and parallelizes the computation of the next generation
+
 #![allow(dead_code)]
 
 use rayon::prelude::*; 
 use std::collections::{HashSet, HashMap};
 use crc32fast::Hasher;
 
-/* extern crate cfg_if;
-extern crate wasm_bindgen;
-use cfg_if::cfg_if;
-use wasm_bindgen::prelude::*; 
-
-cfg_if! {
-    // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
-    // allocator.
-    if #[cfg(feature = "wee_alloc")] {
-        extern crate wee_alloc;
-        #[global_allocator]
-        static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-    }
-} 
-*/
 
 // #[wasm_bindgen]
 #[repr(u8)]
@@ -28,7 +15,7 @@ pub enum Cell {
     Alive = 1,
 }
 
-// #[wasm_bindgen]
+
 #[derive(Clone, Debug)]
 pub struct Universe {
     width: usize,
@@ -65,7 +52,6 @@ impl Universe {
 }
 
 // generation calculation
-// #[wasm_bindgen]
 impl Universe {
     pub fn tick(&mut self) {
         let live_cells = &self.live_cells;
@@ -124,7 +110,6 @@ impl Universe {
         }
     }
 
-    /// Runs the game for the specified number of iterations (ticks).
     pub fn run_iterations(&mut self, iterations: usize) {
         for _ in 0..iterations {
             self.tick();

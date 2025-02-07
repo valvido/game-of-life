@@ -1,0 +1,6 @@
+PATTERN, ALGORITHM, RUNTIME(ms)
+justyna.rle, Naive, 4340
+justyna.rle, Sparse, 25
+justyna.rle, Optimized, 3480
+justyna.rle, TrackAliveCells, 3709
+justyna.rle, HashParallel, 341

@@ -1,16 +1,10 @@
+// This is a sequential implementation using sparse matrices to store the alive cells 
+
 #![allow(dead_code)]
-// use wasm_bindgen::prelude::*;
 use std::collections::{HashMap, HashSet};
 use sysinfo::{System, SystemExt}; 
 use crc32fast::Hasher;
 
-// Function to print memory usage
-fn print_memory_usage(label: &str) {
-    let mut sys = System::new_all();
-    sys.refresh_memory();
-    let memory_used = sys.used_memory();
-    println!("{} - Memory Usage: {} MB", label, memory_used / 1024);
-}
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -19,6 +13,7 @@ pub enum Cell {
     Alive = 1,
 }
 
+// here the Universe implements the cells in a Hashset, only storing the alive cells 
 pub struct Universe {
     width: usize,
     height: usize,
@@ -45,6 +40,7 @@ impl Universe {
 }
 
 impl Universe {
+    // function to advance the universe by one generation
     pub fn tick(&mut self) {
         let mut neighbor_counts: HashMap<(usize, usize), usize> = HashMap::new();
 

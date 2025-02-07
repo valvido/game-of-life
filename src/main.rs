@@ -1,20 +1,15 @@
+// Main function for testing and running all the universe versions 
 #![allow(unused_imports, dead_code)]
 mod optimized_alg;
 mod track_alive_cells;
-mod parallelize;
-mod traits;  // This declares the traits module
 mod hashed_parallel;
 mod bitwise;
 mod sparse_matrix;
 mod naive;
+mod hashlife; 
 
-use crate::traits::TickUniv;
 use hashed_parallel::Universe as HashParallelUniverse;
-
-mod hashlife;  // New Hashlife module
-
-use hashlife::Universe as HashlifeUniverse;  // New import for Hashlife
-use parallelize::Universe as ParallelUniverse;
+use hashlife::Universe as HashlifeUniverse;  
 use optimized_alg::Universe as OptimizedUniverse;
 use naive::{Universe as NaiveUniverse, Cell as NaiveCell};
 use sparse_matrix::Universe as SparseUniverse;
@@ -35,23 +30,24 @@ use std::fs;
 mod utils;
 use utils::*;
 
+// creating an enum with all possible universes to integrate them in general functions
 enum AnyUniverse {
     Naive(NaiveUniverse),
     Sparse(SparseUniverse),
     Optimized(OptimizedUniverse),
     TrackAliveCells(TrackAliveCellsUniverse),
-    Parallel(ParallelUniverse),
     HashParallel(HashParallelUniverse),
     Bitwise(BWUniverse),
     Hashlife(HashlifeUniverse)
 }
 
+
+// function to initialize all universes to the same given grid 
 fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
     NaiveUniverse,
     SparseUniverse,
     OptimizedUniverse,
     TrackAliveCellsUniverse,
-    ParallelUniverse,
     HashParallelUniverse,
     BWUniverse,
     HashlifeUniverse
@@ -69,7 +65,7 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
     // SPARSE
     let sparse_universe = SparseUniverse::new_with_matrix(width, height, flat_matrix.clone());
 
-    // OPTIMIZED
+    // CACHE OPTIMIZED
     let optimized_universe = OptimizedUniverse::new(width, height, flat_matrix.clone());
 
     // TRACK
@@ -90,11 +86,8 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
     let track_alive_cells_universe = TrackAliveCellsUniverse::new(
         width,
         height,
-        initial_trackparl_cells.clone(), // Clone here to preserve for parallel version
+        initial_trackparl_cells.clone(), 
     );
-
-    // PARALLEL
-    let parallel_universe = ParallelUniverse::new(width, height, initial_trackparl_cells.clone());
 
     //PARALLEL WITH HASHING
     let hashed_parallel_universe = HashParallelUniverse::new_with_matrix(width, height, flat_matrix.clone());
@@ -105,11 +98,11 @@ fn initialize_all(flat_matrix: Vec<u8>, width: usize, height: usize) -> (
     // HASHLIFE
     let hashlife_universe = HashlifeUniverse::new_with_matrix(width, height, flat_matrix.clone());
 
-    (naive_universe, sparse_universe, optimized_universe, track_alive_cells_universe, 
-        parallel_universe, hashed_parallel_universe, bitwise_universe, hashlife_universe)
+    (naive_universe, sparse_universe, optimized_universe, track_alive_cells_universe,
+         hashed_parallel_universe, bitwise_universe, hashlife_universe)
 }
 
-// Advances one time step for any possible impl
+// Advances one time step for any possible implementation
 fn global_ticker(universe:&mut AnyUniverse){
 
     // Match on the enum and call the corresponding tick() method
@@ -118,23 +111,20 @@ fn global_ticker(universe:&mut AnyUniverse){
         AnyUniverse::Sparse(u) => u.tick(),
         AnyUniverse::Optimized(u) => u.tick(),
         AnyUniverse::TrackAliveCells(u) => u.tick(),
-        AnyUniverse::Parallel(u) => u.tick(),
         AnyUniverse::HashParallel(u) => u.tick(),
         AnyUniverse::Bitwise(u) => u.tick(),
         AnyUniverse::Hashlife(u) => u.tick(),
     }
 }
 
-// Advances one time step for any possible impl
+// Advances a number of iterations for any possible implementation
 fn universe_iterator(universe:&mut AnyUniverse, n_iter: usize){
 
-    // Match on the enum and call the corresponding tick() method
     match universe {
         AnyUniverse::Naive(u) => u.run_iterations(n_iter),
         AnyUniverse::Sparse(u) => u.run_iterations(n_iter),
         AnyUniverse::Optimized(u) => u.run_iterations(n_iter),
         AnyUniverse::TrackAliveCells(u) => u.run_iterations(n_iter),
-        AnyUniverse::Parallel(u) => u.run_iterations(n_iter),
         AnyUniverse::HashParallel(u) => u.run_iterations(n_iter),
         AnyUniverse::Bitwise(u) => u.run_iterations(n_iter),
         AnyUniverse::Hashlife(u) => u.run_iterations(n_iter),
@@ -150,13 +140,14 @@ fn universe_check(universe:&mut AnyUniverse) -> u32{
         AnyUniverse::Sparse(u) => u.crc32(),
         AnyUniverse::Optimized(u) => u.crc32(),
         AnyUniverse::TrackAliveCells(u) => u.crc32(),
-        AnyUniverse::Parallel(u) => u.crc32(),
         AnyUniverse::HashParallel(u) => u.crc32(),
         AnyUniverse::Bitwise(u) => u.crc32(),
         AnyUniverse::Hashlife(u) => u.crc32(),
     }
 }
 
+
+// this function will test run interations for all versions and collect information regarding runtime and memory usage
 fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128, Vec<u128>, Vec<u64>, Vec<String>){
     
     let mut iteration_times = Vec::new();
@@ -173,16 +164,13 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
             // Start the clock
             iter_start = Instant::now();
             global_ticker(universe);
-            //memory_use.push(get_memory_usage()/1024);
 
         } else if i % 10 == 9 {
 
             global_ticker(universe);
             // Record time per 10 interations
-            let check = format!("{:06X}", universe_check(universe)) ;
-
-            // let check = format!("{}", universe_check(universe)) ;
             let iter_time = iter_start.elapsed().as_millis();
+            let check = format!("{:06X}", universe_check(universe)) ;
 
             checksums.push(check);
             iteration_times.push(iter_time);
@@ -198,6 +186,7 @@ fn gather_iteration_info(universe: &mut AnyUniverse, iterations: usize) -> (u128
 }
 
 
+// measuring only the global time for a given number of iterations
 fn measure_time(universe: &mut AnyUniverse, iterations: usize) -> u128{
     
     let start = Instant::now();
@@ -207,6 +196,10 @@ fn measure_time(universe: &mut AnyUniverse, iterations: usize) -> u128{
     
     start.elapsed().as_millis() 
 }
+
+
+
+
 
 fn main() {
 
@@ -218,8 +211,10 @@ fn main() {
     // PARAMETERS
     let iterations: usize = 100;
     let scale = 3;
+    // grids will be square, only width is computed and used as gridsize
     let width = usize::pow(2, 6 + scale);
 
+    // seed for random matrix initialization
     let seed: u64 = 420;
 
     let output_filename = format!("results_csv/test_{}_{}.csv", width, iterations);
@@ -237,6 +232,7 @@ fn main() {
             "blom.rle", 
             "52513m.rle", 
             "rand_10",
+            "rand_25",
             "rand_55",
             "rand_80"
         ];
@@ -244,7 +240,7 @@ fn main() {
     for pat in patterns{
 
         let flat_matrix: Vec<u8>;
-    
+        //either read initial matrix from file or from randomly generated matrix 
         if pat.contains(".rle"){
 
             // Read RLE file and initialize the flat matrix
@@ -255,7 +251,7 @@ fn main() {
     
             let aux_str = pat.split("_").last().unwrap();
             let mut p_live: f64 = aux_str.parse().unwrap();
-            p_live = p_live/100.;
+            p_live /=100.;
             flat_matrix = random_init(width, p_live, seed);
         }
 
@@ -263,7 +259,7 @@ fn main() {
         println!("{} -- % of Alive Cells: {:.3}", pat, sample_mean);
 
         // --- Initialization ---
-        let (naive_universe,  sparse_universe,  optimized_universe, track_alive_cells_universe, parallel_universe, 
+        let (naive_universe,  sparse_universe,  optimized_universe, track_alive_cells_universe,
                 hashed_parallel_universe, bitwise_universe, hashlife_universe) = initialize_all(flat_matrix, width, width);
 
         let mut initial_universes: Vec<AnyUniverse> = vec![
@@ -271,18 +267,16 @@ fn main() {
                 AnyUniverse::Sparse(sparse_universe),
                 AnyUniverse::Optimized(optimized_universe),
                 AnyUniverse::TrackAliveCells(track_alive_cells_universe),
-                AnyUniverse::Parallel(parallel_universe),
                 AnyUniverse::HashParallel(hashed_parallel_universe),
                 AnyUniverse::Bitwise(bitwise_universe),
                 AnyUniverse::Hashlife(hashlife_universe)
         ];
-
+        // --- Test runs ---
         let universe_names = [
             "Naive", 
             "Sparse", 
             "Optimized",
             "TrackAliveCells", 
-            "Parallel", 
             "HashParallel",
             "Bitwise",
             "Hashlife"

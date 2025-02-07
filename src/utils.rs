@@ -1,3 +1,6 @@
+// File with helper functions to create initial state matrices by reading from input files or generating random live cells 
+// Also declaring how the output result csv is structured 
+
 #![allow(dead_code)]
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader};
@@ -219,15 +222,14 @@ pub fn write_results_to_csv(
     
     // Write metadata as the first row
     wtr.write_record([
-        &format!("File Name: {}", file_name),  // This is the file name of the input file (e.g., "justyna.rle") 
-        //&format!(" Width: {}", grid_size.0),  // Width
-        //&format!(" Height: {}", grid_size.1),  // Height
+        &format!("File Name: {}", file_name),  //file name of the input file (e.g., "justyna.rle") 
         &format!(" No. Iterations: {}", iterations), 
-        "", "", "" ] // Iterations
+        "", "", "" ]
         )?;
     // Write the headers
     wtr.write_record(["Grid size", "Name", "Global Time (ms)", "Times per 10 Iterations", "Memory Usage before and after (MB)", "crc32"])?;
     
+    // results are generated for each method/version of the Game of Life for one input file 
     for results in all_results{
         for version_result in results {
             let grid_size = version_result.0;

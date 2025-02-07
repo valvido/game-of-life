@@ -1,15 +1,11 @@
+// This is the naive, sequential implementation of the Game of Life 
+
+
 #![allow(dead_code)]
 
 use sysinfo::{System, SystemExt}; // Import sysinfo
 use crc32fast::Hasher;
 
-// Function to print memory usage
-fn print_memory_usage(label: &str) {
-    let mut sys = System::new_all();
-    sys.refresh_memory();
-    let memory_used = sys.used_memory();
-    println!("{} - Memory Usage: {} MB", label, memory_used / 1024);
-}
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -18,6 +14,7 @@ pub enum Cell {
     Alive = 1,
 }
 
+// Universe is the grid of size width*height and implements a vector of cells
 pub struct Universe {
     width: usize,
     height: usize,
@@ -28,7 +25,8 @@ impl Universe {
     fn get_index(&self, row: usize, column: usize) -> usize {
         row * self.width + column 
     }
-
+    // number of neighbors is later relevant for computing the next state of the cell
+    // the grid is treated as a torus, therefore edge rows and column have to adjust their neighboring row/col index to wrap around
     fn live_neighbor_count(&self, row: usize, column: usize) -> usize {
         let mut count = 0;
         for delta_row in [self.height - 1, 0, 1].iter().cloned() {
@@ -49,6 +47,7 @@ impl Universe {
 
 
 impl Universe{
+    // function to advance the universe by one generation
     pub fn tick(&mut self) {
         let mut next = self.cells.clone();
 
@@ -57,7 +56,8 @@ impl Universe{
                 let idx = self.get_index(row, col);
                 let cell = self.cells[idx];
                 let live_neighbors = self.live_neighbor_count(row, col);
-
+                
+                //applying the rules of the game
                 let next_cell = match (cell, live_neighbors) {
                     (Cell::Alive, x) if x < 2 => Cell::Dead,
                     (Cell::Alive, 2) | (Cell::Alive, 3) => Cell::Alive,
@@ -78,9 +78,8 @@ impl Universe{
         Universe { width, height, cells }
     }
 
+    // function to advance several generations at a time
     pub fn run_iterations(&mut self, iterations: usize) {
-        print_memory_usage("Before Running Iterations");
-
         for _ in 0..iterations {
             self.tick();
         }
