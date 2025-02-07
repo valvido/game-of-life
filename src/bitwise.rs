@@ -133,8 +133,8 @@ impl Universe {
         for row in 0..self.height {
             for col in 0..self.width {
                 let (byte_index, bit_mask) = self.get_index(row, col);
-                let symbol = if self.cells[byte_index] & bit_mask != 0 { '■' } else { '□' };
-                result.push(symbol);
+                let symbol = if self.cells[byte_index] & bit_mask != 0 { "🦄" } else { "☁ " };
+                result.push_str(symbol);
             }
             result.push('\n');
         }

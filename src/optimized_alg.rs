@@ -100,7 +100,7 @@ impl Universe {
         for row in 0..self.height {
             for col in 0..self.width {
                 // Append '1' or '0' based on the cell's current state.
-                buffer.push(if self.current[self.get_index(row, col)] == 1 { '1' } else { '0' });
+                buffer.push_str(if self.current[self.get_index(row, col)] == 1 { "🦄" } else { "☁ " });
             }
             buffer.push('\n'); // Add a newline character at the end of each row.
         }

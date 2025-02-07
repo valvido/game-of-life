@@ -144,9 +144,9 @@ impl Universe {
         for row in 0..self.height {
             for col in 0..self.width {
                 if self.live_cells.contains(&(row, col)) {
-                    buffer.push('■');
+                    buffer.push_str("🦄");
                 } else {
-                    buffer.push('□');
+                    buffer.push_str("☁ ");
                 }
             }
             buffer.push('\n');

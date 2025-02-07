@@ -128,7 +128,7 @@ fn count_live_neighbors(&self, row: usize, col: usize) -> u8 {
 
         for row in 0..self.height {
             for col in 0..self.width {
-                buffer.push(if self.current[self.get_index(row, col)] == 1 { '1' } else { '0' });
+                buffer.push_str(if self.current[self.get_index(row, col)] == 1 { "🦄" } else { "☁ " });
             }
             buffer.push('\n');
         }

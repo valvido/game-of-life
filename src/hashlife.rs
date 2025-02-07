@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)] // ✅ Ensure Cell implements Hash
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)] //  Ensure Cell implements Hash
 pub enum Cell {
     Dead = 0,
     Alive = 1,
@@ -132,7 +132,7 @@ impl Universe {
 
     /// Advances the universe by one tick using Hashlife
     pub fn tick(&mut self) {
-        let new_root = self.compute_next(self.root.clone()); // ✅ FIX: Clone before passing
+        let new_root = self.compute_next(self.root.clone()); // FIX: Clone before passing
         self.root = new_root;
     }
 
