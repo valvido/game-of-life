@@ -1,71 +1,37 @@
 <div align="center">
 
-  <h1><code>wasm-pack-template</code></h1>
+  <h1><code>Game of Life Implementations in Rust</code></h1>
 
-  <strong>A template for kick starting a Rust and WebAssembly project using <a href="https://github.com/rustwasm/wasm-pack">wasm-pack</a>.</strong>
+  <strong>Valentina Vidovic, Alexandra Kübelbäck, <br>
+  Karolina Muciek, Carlos Ruiz</strong>
 
-  <p>
-    <a href="https://travis-ci.org/rustwasm/wasm-pack-template"><img src="https://img.shields.io/travis/rustwasm/wasm-pack-template.svg?style=flat-square" alt="Build Status" /></a>
-  </p>
-
-  <h3>
-    <a href="https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html">Tutorial</a>
-    <span> | </span>
-    <a href="https://discordapp.com/channels/442252698964721669/443151097398296587">Chat</a>
-  </h3>
-
-  <sub>Built with 🦀🕸 by <a href="https://rustwasm.github.io/">The Rust and WebAssembly Working Group</a></sub>
 </div>
 
-## About
+##  🦄 About
 
-[**📚 Read this template tutorial! 📚**][template-docs]
+We implemented and tested seven different algorithms that compute new generations of Conway's Game of Life.
 
-This template is designed for compiling Rust libraries into WebAssembly and
-publishing the resulting package to NPM.
+* **Naive:** A basic implementation.
+* **Cache Optimized:** Some memory optimization to speed up access and copying.
+* **Sparse Matrix Representation:** Since the rules of Conway's game tend to generate sparse universes, representing the grid as a sparse matrix allows to optimize computations.
+* **Bitwise:** Stores cells as single bits to save memory for big universes.
 
-Be sure to check out [other `wasm-pack` tutorials online][tutorials] for other
-templates and usages of `wasm-pack`.
+* **Live Cell Tracker:** Keeps a record of active zones in the universe to avoid unnecessary computations.
+* **Hashed Parallel:** Keeps a list of active cells as a Hash Set (with the same purpose fo only working on active areas of the grid) and parallelizes computations at each time step.
 
-[tutorials]: https://rustwasm.github.io/docs/wasm-pack/tutorials/index.html
-[template-docs]: https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html
+* **Hashlife:** A recursive, tree-based approach that uses memoization to speed up computation as more generations pass.
 
-## 🚴 Usage
+## 🦄 Usage
 
-### 🐑 Use `cargo generate` to Clone this Template
+### ☁ Use `cargo run` to measure different Game of Life algorithms  ☁ 
 
-[Learn more about `cargo generate` here.](https://github.com/ashleygwilliams/cargo-generate)
-
-```
-cargo generate --git https://github.com/rustwasm/wasm-pack-template.git --name my-project
-cd my-project
-```
-
-### 🛠️ Build with `wasm-pack build`
+Compute a number of iterations of the Game in a toroidal grid of size $2^k$, where $k = 6 + \texttt{scale}$:
 
 ```
-wasm-pack build
+cargo run <scale> <iters>
 ```
+Seven different algorithms to compute generations of the Game of Life are timed and the outputs are saved in `results_csv/test_<size>_<iters>.csv`
 
-### 🔬 Test in Headless Browsers with `wasm-pack test`
-
-```
-wasm-pack test --headless --firefox
-```
-
-### 🎁 Publish to NPM with `wasm-pack publish`
-
-```
-wasm-pack publish
-```
-
-## 🔋 Batteries Included
-
-* [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) for communicating
-  between WebAssembly and JavaScript.
-* [`console_error_panic_hook`](https://github.com/rustwasm/console_error_panic_hook)
-  for logging panic messages to the developer console.
-* `LICENSE-APACHE` and `LICENSE-MIT`: most Rust projects are licensed this way, so these are included for you
 
 ## License
 
@@ -75,12 +41,3 @@ Licensed under either of
 * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.
-
-### Contribution
-
-Unless you explicitly state otherwise, any contribution intentionally
-submitted for inclusion in the work by you, as defined in the Apache-2.0
-license, shall be dual licensed as above, without any additional terms or
-conditions.
-# game-of-life-naive
-# game-of-life
