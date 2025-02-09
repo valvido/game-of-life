@@ -1,3 +1,7 @@
+// HASHLIFE
+// This implementation represents the universe using a recursive quadtree
+// and uses memoization to speed up compute of future generations
+
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 

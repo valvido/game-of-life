@@ -1,3 +1,5 @@
+// Game of Life implementation with bitwise (1 cell = 1 bit) representation
+
 use crc32fast::Hasher;
 
 

@@ -1,8 +1,8 @@
-#![allow(dead_code)]
-use crc32fast::Hasher;
-
 //this version does not update the whole matrix (grid) but only keeps track of the part of the grid 
 //which is alive and active
+
+#![allow(dead_code)]
+use crc32fast::Hasher;
 
 pub struct Universe {
     width: usize,
