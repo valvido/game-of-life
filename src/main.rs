@@ -203,26 +203,17 @@ fn measure_time(universe: &mut AnyUniverse, iterations: usize) -> u128{
 
 fn main() {
 
-    // // Get scale and iterations from command line
-    // let args: Vec<String> = env::args().collect();
-    // let scale = &args[1].parse::<u32>().unwrap();
-    // let iterations = &args[2].parse::<usize>().unwrap();
+    ///////////////// PARAMETERS //////////////////////////
+    // Get scale and iterations from command line
+    let args: Vec<String> = env::args().collect();
+    let scale = &args[1].parse::<u32>().unwrap();
+    let iterations = args[2].parse::<usize>().unwrap();
     
-    // PARAMETERS
-    let iterations: usize = 100;
-    let scale = 3;
     // grids will be square, only width is computed and used as gridsize
     let width = usize::pow(2, 6 + scale);
 
     // seed for random matrix initialization
     let seed: u64 = 420;
-
-    let output_filename = format!("results_csv/test_{}_{}.csv", width, iterations);
-    let mut output_file = File::create(&output_filename).expect("UNABLE TO CREATE CSV FILE: {}" );
-
-    let headers = format!("PATTERN, ALGORITHM, RUNTIME(ms)");
-
-    writeln!(output_file, "{}", headers).expect("Error writing headers");
 
     // INITIAL STATES
     // File name of the grid
@@ -237,6 +228,14 @@ fn main() {
             "rand_80"
         ];
 
+    // Output CSV
+    let output_filename = format!("results_csv/test_{}_{}.csv", scale, iterations);
+    let mut output_file = File::create(&output_filename).expect("UNABLE TO CREATE CSV FILE: {}" );
+    let headers = format!("PATTERN, ALGORITHM, RUNTIME(ms)");
+    writeln!(output_file, "{}", headers).expect("Error writing headers");
+
+    println!("Running {} iterations on universe of size {}^2", iterations, width);
+    
     for pat in patterns{
 
         let flat_matrix: Vec<u8>;

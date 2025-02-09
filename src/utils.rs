@@ -35,6 +35,8 @@ pub fn parse_header(line: &str) -> (usize, usize) {
     dims
 }
 
+/// Gets a RLE string and parses arguments that pass to a function
+/// (print, push into a vector, write, etc)
 pub fn iter_coords<F>(boardrow: &str, dims: (usize, usize), func: &mut F)
 where
     F: FnMut(u8)
@@ -47,10 +49,13 @@ where
     
     for c in boardrow.chars() {
         if c.is_numeric() {
+            // Calculates how many copies of a character will be passed
             prefixnum = prefixnum * 10 + c.to_digit(10).unwrap() as i64;
             prefixset = true;
         } else {
             let repeat = if prefixset { prefixnum } else { 1 } as usize;
+
+            // 'b' = dead/blank, 'o' = alive/one
             if c == 'b' {
                 for _ in 0..repeat {
                     func(0);
@@ -116,6 +121,21 @@ where
     }
 }
 
+///  Calculates the space needed to pad when embedding
+/// an init pattern into the given grid size
+pub fn calc_padding(width: usize, grid_size: usize) -> usize{
+
+    assert!(width>grid_size, "Pattern {}sq is too big for grid of size {}", grid_size, width);
+
+    let diff = width-grid_size;
+
+    match diff%2 {
+        0 => diff/2,
+        1 => (diff+1)/2,
+        _ => panic!("INTEGER DIVISION BY 2 YIELDED SMTH WEIRDD!!!!")
+    }
+}
+
 /// Read .rle file and return problem parameters
 pub fn init_from_file(file_path: &str, width: usize) -> Vec<u8> {
     // Reads the file and saves as a string
@@ -166,7 +186,7 @@ pub fn init_from_file(file_path: &str, width: usize) -> Vec<u8> {
     output_mat
 }
 
-
+/// Generates a matrix sampling from a Bernoulli distribution with p = p_live
 pub fn random_init(width: usize, p_live: f64, seed: u64) -> Vec<u8>{
 
     let bernoulli = Bernoulli::new(p_live).unwrap();
@@ -177,19 +197,7 @@ pub fn random_init(width: usize, p_live: f64, seed: u64) -> Vec<u8>{
 }
 
 
-pub fn calc_padding(big_n: usize, grid_size: usize) -> usize{
-
-    assert!(big_n>grid_size, "Pattern {}sq is too big for grid of size {}", grid_size, big_n);
-
-    let diff = big_n-grid_size;
-
-    match diff%2 {
-        0 => diff/2,
-        1 => (diff+1)/2,
-        _ => panic!("INTEGER DIVISION BY 2 YIELDED SMTH WEIRDD!!!!")
-    }
-}
-
+// Converts a vector of length N squared to a NxN matrix
 pub fn vec_to_matrix<T: Clone>(vec: &[T], n: usize) -> Vec<Vec<T>> {
     vec.chunks(n)
         .map(|chunk| chunk.to_vec())
@@ -208,8 +216,10 @@ pub fn get_memory_usage() -> u64 {
     sys.refresh_memory();
     sys.used_memory() // Returns memory usage in KB
 }
-    
-pub fn write_results_to_csv(
+
+/// Writes the results of a test run to a csv
+/// not used in main run
+pub fn _write_results_to_csv(
     all_results: &Vec<Vec<(usize, String, u128, Vec<u128>, Vec<u64>, Vec<u32>)>>, 
     filename: &str,  
     iterations: usize, 
